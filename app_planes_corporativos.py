@@ -94,7 +94,7 @@ def _verificar_alerta_variacion(tasa_nueva):
             return None
         variacion_pct = abs(tasa_nueva - tasa_base) / tasa_base * 100
         if variacion_pct >= PORCENTAJE_ALERTA_VARIACION:
-            signo = "â–²" if tasa_nueva > tasa_base else "â–¼"
+            signo = "▲" if tasa_nueva > tasa_base else "▼"
             return (
                 f"{signo} Variacion de {variacion_pct:.4f}% respecto a la tasa inicial del dia "
                 f"({tasa_base:.4f} -> {tasa_nueva:.4f} HNL/USD)"
@@ -215,7 +215,7 @@ def obtener_tasa_usd_hnl(force_refresh=False, max_horas_cache=6):
 
     return None, None, None
 
-# ============ CONFIGURACIÃ“N DE TEMA ============
+# ============ CONFIGURACIÓN DE TEMA ============
 def apply_theme(tema):
     """Aplica el tema seleccionado"""
     if tema == "Oscuro":
@@ -325,15 +325,15 @@ def apply_main_background(mode="Impacto"):
             .sky-tech-phone {{ bottom: 10%; left: 44%; font-size: {phone_size}; transform: rotate(-6deg); }}
         </style>
         <div class="sky-tech-overlay">
-            <span class="sky-tech-sat">ðŸ›°ï¸</span>
-            <span class="sky-tech-wifi">ðŸ“¶</span>
-            <span class="sky-tech-phone">ðŸ“±</span>
+            <span class="sky-tech-sat">🛰️</span>
+            <span class="sky-tech-wifi">📶</span>
+            <span class="sky-tech-phone">📱</span>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-# ============ GESTIÃ“N DE USUARIOS ============
+# ============ GESTIÓN DE USUARIOS ============
 class GestorUsuarios:
     def __init__(self, archivo="usuarios.json"):
         self.archivo = archivo
@@ -344,7 +344,7 @@ class GestorUsuarios:
             with open(self.archivo, 'r', encoding='utf-8') as f:
                 usuarios = json.load(f)
 
-            # Normaliza usuarios antiguos que no tienen el permiso explÃ­cito.
+            # Normaliza usuarios antiguos que no tienen el permiso explícito.
             for _, data in usuarios.items():
                 if "puede_editar" not in data:
                     data["puede_editar"] = data.get("rol", "usuario") in ["administrador", "superadministrador", "usuario"]
@@ -358,13 +358,13 @@ class GestorUsuarios:
                         "exportar": True,
                     }
 
-            # Garantiza cuentas administrativas mÃ­nimas si el JSON solo trae usuarios de prueba.
+            # Garantiza cuentas administrativas mínimas si el JSON solo trae usuarios de prueba.
             existe_superadmin = any(u.get("rol") == "superadministrador" for u in usuarios.values())
             existe_admin = any(u.get("rol") == "administrador" for u in usuarios.values())
 
             if not existe_superadmin:
                 usuarios["superadmin"] = {
-                    "contraseÃ±a": "super123",
+                    "contraseña": "super123",
                     "rol": "superadministrador",
                     "email": "super@empresa.com",
                     "puede_editar": True,
@@ -379,7 +379,7 @@ class GestorUsuarios:
 
             if not existe_admin:
                 usuarios["admin"] = {
-                    "contraseÃ±a": "admin123",
+                    "contraseña": "admin123",
                     "rol": "administrador",
                     "email": "admin@empresa.com",
                     "puede_editar": True,
@@ -399,7 +399,7 @@ class GestorUsuarios:
 
         return {
             "superadmin": {
-                "contraseÃ±a": "super123",
+                "contraseña": "super123",
                 "rol": "superadministrador",
                 "email": "super@empresa.com",
                 "puede_editar": True,
@@ -412,7 +412,7 @@ class GestorUsuarios:
                 }
             },
             "admin": {
-                "contraseÃ±a": "admin123",
+                "contraseña": "admin123",
                 "rol": "administrador",
                 "email": "admin@empresa.com",
                 "puede_editar": True,
@@ -435,10 +435,10 @@ class GestorUsuarios:
             return False, "El usuario ya existe"
 
         if rol not in ["usuario", "administrador", "superadministrador"]:
-            return False, "Rol no vÃ¡lido"
+            return False, "Rol no válido"
         
         self.usuarios[usuario] = {
-            "contraseÃ±a": contrasena,
+            "contraseña": contrasena,
             "rol": rol,
             "email": email,
             "puede_editar": bool(puede_editar),
@@ -459,10 +459,10 @@ class GestorUsuarios:
             return False, "Usuario no encontrado"
 
         if rol and rol not in ["usuario", "administrador", "superadministrador"]:
-            return False, "Rol no vÃ¡lido"
+            return False, "Rol no válido"
 
         if contrasena:
-            self.usuarios[usuario]["contraseÃ±a"] = contrasena
+            self.usuarios[usuario]["contraseña"] = contrasena
         if rol:
             self.usuarios[usuario]["rol"] = rol
         if email is not None:
@@ -479,8 +479,8 @@ class GestorUsuarios:
         if usuario not in self.usuarios:
             return False, "Usuario no encontrado"
         
-        if self.usuarios[usuario]["contraseÃ±a"] != contrasena:
-            return False, "ContraseÃ±a incorrecta"
+        if self.usuarios[usuario]["contraseña"] != contrasena:
+            return False, "Contraseña incorrecta"
         
         return True, self.usuarios[usuario]
     
@@ -498,9 +498,9 @@ class GestorUsuarios:
         
         return False, "Usuario no encontrado"
 
-# Configurar pÃ¡gina
+# Configurar página
 st.set_page_config(
-    page_title="Dashboard - GestiÃ³n de Planes Corporativos",
+    page_title="Dashboard - Gestión de Planes Corporativos",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -539,7 +539,7 @@ def guardar_planes():
         with open(PLANES_FILE, 'w', encoding='utf-8') as f:
             json.dump(st.session_state.planes, f, ensure_ascii=False, indent=2, default=str)
     except Exception as e:
-        st.error(f"âŒ No se pudo guardar planes: {e}")
+        st.error(f"❌ No se pudo guardar planes: {e}")
 
 
 def registrar_debug_importacion(evento, detalle):
@@ -551,7 +551,7 @@ def registrar_debug_importacion(evento, detalle):
         pass
 
 
-# Inicializar sesiÃ³n
+# Inicializar sesión
 if 'planes' not in st.session_state:
     st.session_state.planes = cargar_planes()
 
@@ -582,7 +582,7 @@ def registrar_movimiento(tipo, detalle):
         "detalle": detalle
     })
 
-    # tambiÃ©n guardar en archivo para persistencia si quieres
+    # también guardar en archivo para persistencia si quieres
     try:
         with open(MOVIMIENTOS_FILE, 'w', encoding='utf-8') as f:
             json.dump(st.session_state.movimientos, f, ensure_ascii=False, indent=2)
@@ -727,7 +727,7 @@ def preparar_dataframe_importacion(df):
 
 
 def analizar_importacion_lineas(df_nuevas, planes_actuales, tasa_default):
-    """Calcula resumen de importaciÃ³n sin persistir cambios."""
+    """Calcula resumen de importación sin persistir cambios."""
     resumen = {
         "filas": 0,
         "nuevas": 0,
@@ -762,7 +762,7 @@ def analizar_importacion_lineas(df_nuevas, planes_actuales, tasa_default):
 
 
 def normalizar_y_deduplicar_planes(planes):
-    """Normaliza nÃºmeros y elimina duplicados exactos por nÃºmero normalizado."""
+    """Normaliza números y elimina duplicados exactos por número normalizado."""
     vistos = set()
     planes_limpios = []
     cambios_numero = 0
@@ -889,7 +889,7 @@ def construir_plan_desde_fila(row, tasa_default):
         "numero": numero,
         "operador": str(row.get("operador", "TIGO")).strip() or "TIGO",
         "nombre_personal": nombre,
-        "area": str(row.get("area", "Sin Ãrea")).strip() or "Sin Ãrea",
+        "area": str(row.get("area", "Sin Área")).strip() or "Sin Área",
         "departamento": str(row.get("departamento", "Sin Departamento")).strip() or "Sin Departamento",
         "perfil_profesional": str(row.get("perfil_profesional", "")).strip(),
         "valor_usd": float(valor_usd),
@@ -1044,9 +1044,9 @@ def render_kpi_cards(total_lineas, gasto_total, areas_diff, deptos_diff):
             }}
         </style>
         <div class="kpi-grid">
-            <div class="kpi-card"><p class="kpi-label">Total de LÃ­neas</p><p class="kpi-value">{total_lineas}</p></div>
+            <div class="kpi-card"><p class="kpi-label">Total de Líneas</p><p class="kpi-value">{total_lineas}</p></div>
             <div class="kpi-card"><p class="kpi-label">Gasto Total (USD)</p><p class="kpi-value">${gasto_total:,.2f}</p></div>
-            <div class="kpi-card"><p class="kpi-label">Ãreas Diferentes</p><p class="kpi-value">{areas_diff}</p></div>
+            <div class="kpi-card"><p class="kpi-label">Áreas Diferentes</p><p class="kpi-value">{areas_diff}</p></div>
             <div class="kpi-card"><p class="kpi-label">Departamentos</p><p class="kpi-value">{deptos_diff}</p></div>
         </div>
         """,
@@ -1184,76 +1184,49 @@ def construir_tabla_planes_profesional(df_tabla):
 if 'preferencias' not in st.session_state:
     st.session_state.preferencias = {
         "tema": "Claro",
-        "idioma": "EspaÃ±ol",
+        "idioma": "Español",
         "fondo_visual": "Impacto",
         "notificaciones": True,
         "columnas_visibles": ["numero", "nombre_personal", "area", "departamento", "valor_usd"]
     }
 
-# ============ SISTEMA DE AUTENTICACIÃ“N ============
+# ============ SISTEMA DE AUTENTICACIÓN ============
 def pantalla_login():
     """Pantalla de login"""
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("## ðŸ” Sistema de GestiÃ³n de Planes Corporativos")
+        st.markdown("## 🔐 Sistema de Gestión de Planes Corporativos")
         st.markdown("---")
         
-        usuario = st.text_input("ðŸ‘¤ Usuario:")
-        contrasena = st.text_input("ðŸ”‘ ContraseÃ±a:", type="password")
-        
-        col_btn1, col_btn2 = st.columns(2)
-        
-        with col_btn1:
-            if st.button("ðŸš€ Iniciar SesiÃ³n", width="stretch"):
-                valido, info = gestor_usuarios.validar_usuario(usuario, contrasena)
-                if valido:
-                    st.session_state.usuario_actual = usuario
-                    st.session_state.rol = info.get("rol", "usuario")
-                    st.session_state.puede_editar = bool(info.get("puede_editar", False) or st.session_state.rol in ["administrador", "superadministrador"])
-                    st.success("âœ… SesiÃ³n iniciada correctamente")
-                    st.rerun()
-                else:
-                    st.error(f"âŒ {info}")
-        
-        with col_btn2:
-            if st.button("ðŸ‘¤ Crear Cuenta", width="stretch"):
-                st.session_state.mostrar_registro = True
+        usuario = st.text_input("👤 Usuario:")
+        contrasena = st.text_input("🔑 Contraseña:", type="password")
+
+        if st.button("🚀 Iniciar Sesión", width="stretch"):
+            valido, info = gestor_usuarios.validar_usuario(usuario, contrasena)
+            if valido:
+                st.session_state.usuario_actual = usuario
+                st.session_state.rol = info.get("rol", "usuario")
+                st.session_state.puede_editar = bool(info.get("puede_editar", False) or st.session_state.rol in ["administrador", "superadministrador"])
+                st.success("✅ Sesión iniciada correctamente")
                 st.rerun()
-        
-        # Forma de registro
-        if 'mostrar_registro' in st.session_state and st.session_state.mostrar_registro:
-            st.markdown("---")
-            st.subheader("ðŸ“ Crear Nueva Cuenta")
-            
-            nuevo_usuario = st.text_input("Nuevo usuario:")
-            nueva_contrasena = st.text_input("Nueva contraseÃ±a:", type="password")
-            email = st.text_input("Email (opcional):")
-            
-            if st.button("âœ… Registrarse", width="stretch"):
-                if nuevo_usuario and nueva_contrasena:
-                    exito, mensaje = gestor_usuarios.crear_usuario(nuevo_usuario, nueva_contrasena, "usuario", email)
-                    if exito:
-                        st.success(f"âœ… {mensaje}")
-                        st.session_state.mostrar_registro = False
-                        st.rerun()
-                    else:
-                        st.error(f"âŒ {mensaje}")
-                else:
-                    st.error("âŒ Usuario y contraseÃ±a son obligatorios")
+            else:
+                st.error(f"❌ {info}")
+
+        st.caption("Las cuentas de acceso se crean y administran solo desde Configuración por un administrador.")
 
 if not st.session_state.usuario_actual:
     pantalla_login()
     st.stop()
 else:
-    # ============ APLICACIÃ“N PRINCIPAL ============
+    # ============ APLICACIÓN PRINCIPAL ============
     total_lineas_sidebar, lineas_asignadas_sidebar, lineas_disponibles_sidebar = resumen_numeros_corporativos(st.session_state.planes)
     
     # Sidebar con info de usuario
     with st.sidebar:
-        st.markdown(f"### ðŸ‘¤ {st.session_state.usuario_actual}")
+        st.markdown(f"### 👤 {st.session_state.usuario_actual}")
         st.markdown(f"**Rol:** {st.session_state.rol}")
-        st.markdown(f"**Puede editar:** {'SÃ­' if st.session_state.puede_editar else 'No'}")
+        st.markdown(f"**Puede editar:** {'Sí' if st.session_state.puede_editar else 'No'}")
         st.markdown("---")
 
         st.markdown(
@@ -1352,15 +1325,15 @@ else:
         )
 
         # Resumen rapido de lineas corporativas en menu izquierdo.
-        with st.expander("ðŸ“ž Numeros Corporativos", expanded=True):
+        with st.expander("📞 Numeros Corporativos", expanded=True):
             st.metric("Lineas activas", total_lineas_sidebar)
             st.metric("Asignadas", lineas_asignadas_sidebar)
             st.metric("Libres/Disponibles", lineas_disponibles_sidebar)
 
-            if st.button("ðŸ“‹ Ver/Ocultar lista completa", key="btn_toggle_numeros"):
+            if st.button("📋 Ver/Ocultar lista completa", key="btn_toggle_numeros"):
                 st.session_state.mostrar_numeros_corporativos = not st.session_state.mostrar_numeros_corporativos
 
-            st.markdown("#### â¬†ï¸ Importar lineas nuevas (sumar)")
+            st.markdown("#### ⬆️ Importar lineas nuevas (sumar)")
             with st.form("form_importar_nuevas_lineas", clear_on_submit=False):
                 archivo_nuevas_lineas = st.file_uploader(
                     "CSV o Excel con lineas nuevas",
@@ -1368,7 +1341,7 @@ else:
                     key="uploader_nuevas_lineas",
                     help="Columnas sugeridas: numero, nombre_personal, area, departamento, valor_usd",
                 )
-                st.caption("Se permiten nombres repetidos. La validaciÃ³n de duplicados se realiza por nÃºmero telefÃ³nico.")
+                st.caption("Se permiten nombres repetidos. La validación de duplicados se realiza por número telefónico.")
 
                 hoja_nuevas_lineas = None
                 if archivo_nuevas_lineas is not None and archivo_nuevas_lineas.name.lower().endswith((".xlsx", ".xls")):
@@ -1410,13 +1383,13 @@ else:
                                     float(st.session_state.get("tasa_usd_hnl", 24.0)),
                                 )
                                 st.caption(
-                                    f"PrevalidaciÃ³n: nuevas={resumen_preview['nuevas']} | duplicadas={resumen_preview['duplicadas']} | invÃ¡lidas={resumen_preview['invalidas']}"
+                                    f"Prevalidación: nuevas={resumen_preview['nuevas']} | duplicadas={resumen_preview['duplicadas']} | inválidas={resumen_preview['invalidas']}"
                                 )
                     except Exception as e:
                         st.caption(f"No se pudo generar resumen del archivo: {e}")
 
                 submit_importar_lineas = st.form_submit_button(
-                    "âž• Importar lineas nuevas",
+                    "➕ Importar lineas nuevas",
                     disabled=not st.session_state.puede_editar,
                     use_container_width=True,
                 )
@@ -1426,7 +1399,7 @@ else:
         
         # API Key de Gemini (solo para superadministrador)
         if st.session_state.rol == "superadministrador":
-            api_key = st.text_input("ðŸ”‘ API Key de Gemini:", type="password")
+            api_key = st.text_input("🔑 API Key de Gemini:", type="password")
             
             if api_key:
                 genai.configure(api_key=api_key)
@@ -1435,13 +1408,13 @@ else:
             api_key = None
         
         # Preferencias
-        st.markdown("### âš™ï¸ Preferencias")
-        tema = st.selectbox("ðŸŽ¨ Tema:", ["Oscuro", "Azul", "Verde", "Rojo", "Claro", "AutomÃ¡tico"])
+        st.markdown("### ⚙️ Preferencias")
+        tema = st.selectbox("🎨 Tema:", ["Oscuro", "Azul", "Verde", "Rojo", "Claro", "Automático"])
         apply_theme(tema)
         st.session_state.tema = tema
 
         fondo_visual = st.selectbox(
-            "ðŸ–¼ï¸ Fondo principal:",
+            "🖼️ Fondo principal:",
             ["Corporativo", "Sutil", "Impacto"],
             index=["Corporativo", "Sutil", "Impacto"].index(st.session_state.preferencias.get("fondo_visual", "Impacto"))
             if st.session_state.preferencias.get("fondo_visual", "Impacto") in ["Corporativo", "Sutil", "Impacto"]
@@ -1450,18 +1423,18 @@ else:
         st.session_state.preferencias["fondo_visual"] = fondo_visual
         apply_main_background(fondo_visual)
         
-        idioma = st.selectbox("ðŸŒ Idioma:", ["EspaÃ±ol", "InglÃ©s", "PortuguÃ©s"])
+        idioma = st.selectbox("🌐 Idioma:", ["Español", "Inglés", "Portugués"])
         st.session_state.preferencias["idioma"] = idioma
 
-        # Tasa global de conversiÃ³n USD -> HNL para toda la app
-        st.markdown("### ðŸ’± Tasa USD/HNL")
+        # Tasa global de conversión USD -> HNL para toda la app
+        st.markdown("### 💱 Tasa USD/HNL")
         if 'tasa_usd_hnl' not in st.session_state:
             tasa_inicial, fuente_inicial, fecha_inicial = obtener_tasa_usd_hnl()
             st.session_state.tasa_usd_hnl = tasa_inicial or 24.0
             st.session_state.tasa_fuente = fuente_inicial or "Manual por defecto"
             st.session_state.tasa_actualizada_en = fecha_inicial or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # RevisiÃ³n periÃ³dica para mantener la tasa vigente sin intervenciÃ³n manual.
+        # Revisión periódica para mantener la tasa vigente sin intervención manual.
         ultima_verificacion = st.session_state.get("tasa_ultima_verificacion")
         ahora = datetime.now()
         necesita_verificar = True
@@ -1482,7 +1455,7 @@ else:
                 )
             st.session_state.tasa_ultima_verificacion = ahora.strftime("%Y-%m-%d %H:%M:%S")
 
-        if st.button("ðŸ”„ Actualizar tasa desde Internet"):
+        if st.button("🔄 Actualizar tasa desde Internet"):
             tasa_actualizada, fuente_actualizada, fecha_actualizada = obtener_tasa_usd_hnl(force_refresh=True)
             if tasa_actualizada:
                 alerta_variacion = _verificar_alerta_variacion(tasa_actualizada)
@@ -1494,7 +1467,7 @@ else:
                     f"Tasa actualizada: {tasa_actualizada:.4f} HNL por USD | Fuente: {st.session_state.tasa_fuente}"
                 )
                 if alerta_variacion:
-                    st.warning(f"âš ï¸ {alerta_variacion}")
+                    st.warning(f"⚠️ {alerta_variacion}")
             else:
                 st.error("No se pudo actualizar desde Internet. Se mantiene la ultima tasa guardada.")
 
@@ -1521,7 +1494,7 @@ else:
         
         st.markdown("---")
         
-        if st.button("ðŸšª Cerrar SesiÃ³n"):
+        if st.button("🚪 Cerrar Sesión"):
             st.session_state.usuario_actual = None
             st.session_state.rol = None
             st.session_state.puede_editar = False
@@ -1572,10 +1545,10 @@ else:
 
     # Tabs principales
     tab1, tab2, tab3, tab4 = st.tabs([
-        "ðŸ“Š Dashboard",
-        "âž• Agregar Plan",
-        "ðŸ“‹ Gestionar Planes",
-        "âš™ï¸ ConfiguraciÃ³n"
+        "📊 Dashboard",
+        "➕ Agregar Plan",
+        "📋 Gestionar Planes",
+        "⚙️ Configuración"
     ])
 
     render_hero_principal(st.session_state.usuario_actual, st.session_state.rol)
@@ -1621,11 +1594,11 @@ with tab1:
         lineas_asignadas = len(df[(df["nombre_personal"].notna()) & (df["nombre_personal"] != "")])
         lineas_libres = total_lineas - lineas_asignadas
 
-        st.markdown("### ðŸ“Š Indicadores Principales")
+        st.markdown("### 📊 Indicadores Principales")
         col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
         with col_kpi1:
             st.markdown(
-                f'<div class="kpi-container"><div class="kpi-label">Total LÃ­neas</div><div class="kpi-big">{total_lineas}</div></div>',
+                f'<div class="kpi-container"><div class="kpi-label">Total Líneas</div><div class="kpi-big">{total_lineas}</div></div>',
                 unsafe_allow_html=True,
             )
         with col_kpi2:
@@ -1635,22 +1608,22 @@ with tab1:
             )
         with col_kpi3:
             st.markdown(
-                f'<div class="kpi-container"><div class="kpi-label">LÃ­neas Asignadas</div><div class="kpi-big">{lineas_asignadas}</div></div>',
+                f'<div class="kpi-container"><div class="kpi-label">Líneas Asignadas</div><div class="kpi-big">{lineas_asignadas}</div></div>',
                 unsafe_allow_html=True,
             )
         with col_kpi4:
             st.markdown(
-                f'<div class="kpi-container"><div class="kpi-label">LÃ­neas Libres</div><div class="kpi-big">{lineas_libres}</div></div>',
+                f'<div class="kpi-container"><div class="kpi-label">Líneas Libres</div><div class="kpi-big">{lineas_libres}</div></div>',
                 unsafe_allow_html=True,
             )
 
         st.markdown("---")
 
-        # GrÃ¡ficos principales con Plotly
+        # Gráficos principales con Plotly
         col_chart1, col_chart2 = st.columns(2)
 
         with col_chart1:
-            st.markdown("### ðŸ’° Gasto por Ãrea")
+            st.markdown("### 💰 Gasto por Área")
             import plotly.express as px
 
             gasto_area = df.groupby("area")["valor_usd"].sum().sort_values(ascending=True)
@@ -1658,7 +1631,7 @@ with tab1:
                 y=gasto_area.index,
                 x=gasto_area.values,
                 orientation="h",
-                labels={"x": "USD", "y": "Ãrea"},
+                labels={"x": "USD", "y": "Área"},
                 color=gasto_area.values,
                 color_continuous_scale="Teal",
                 title=None,
@@ -1675,7 +1648,7 @@ with tab1:
             st.plotly_chart(fig_area, use_container_width=True, config={"displayModeBar": False})
 
         with col_chart2:
-            st.markdown("### ðŸ‘¥ DistribuciÃ³n por Departamento")
+            st.markdown("### 👥 Distribución por Departamento")
             lineas_dept = df["departamento"].value_counts().head(8)
             fig_dept = px.pie(
                 values=lineas_dept.values,
@@ -1697,7 +1670,7 @@ with tab1:
         col_chart3, col_chart4 = st.columns(2)
 
         with col_chart3:
-            st.markdown("### ðŸ“ˆ Tendencia Acumulada de Gasto")
+            st.markdown("### 📈 Tendencia Acumulada de Gasto")
             df_sorted = df.sort_values("fecha_creacion")
             df_sorted["acumulado"] = df_sorted["valor_usd"].cumsum()
             fig_cumsum = px.line(
@@ -1720,7 +1693,7 @@ with tab1:
             st.plotly_chart(fig_cumsum, use_container_width=True, config={"displayModeBar": False})
 
         with col_chart4:
-            st.markdown("### ðŸ’µ DistribuciÃ³n de Valores USD")
+            st.markdown("### 💵 Distribución de Valores USD")
             fig_scatter = px.scatter(
                 df,
                 x="area",
@@ -1744,96 +1717,96 @@ with tab1:
             st.plotly_chart(fig_scatter, use_container_width=True, config={"displayModeBar": False})
 
         st.markdown("---")
-        st.markdown("### ðŸ“Š MÃ©tricas Adicionales")
+        st.markdown("### 📊 Métricas Adicionales")
         metrics_col1, metrics_col2, metrics_col3, metrics_col4 = st.columns(4)
         with metrics_col1:
-            st.metric(label="Promedio por LÃ­nea (USD)", value=f"${gasto_promedio:,.2f}")
+            st.metric(label="Promedio por Línea (USD)", value=f"${gasto_promedio:,.2f}")
         with metrics_col2:
-            st.metric(label="Ãreas Ãšnicas", value=areas_unicas)
+            st.metric(label="Áreas Únicas", value=areas_unicas)
         with metrics_col3:
             st.metric(label="Departamentos", value=deptos_unicos)
         with metrics_col4:
             tasa_ocupacion = (lineas_asignadas / total_lineas * 100) if total_lineas > 0 else 0
-            st.metric(label="OcupaciÃ³n (%)", value=f"{tasa_ocupacion:.1f}%")
+            st.metric(label="Ocupación (%)", value=f"{tasa_ocupacion:.1f}%")
 
     else:
-        st.info("ðŸ“Œ No hay planes registrados aÃºn. Â¡Comienza agregando uno!")
+        st.info("📌 No hay planes registrados aún. ¡Comienza agregando uno!")
 
 # ============ TAB 2: AGREGAR PLAN ============
 with tab2:
-    st.subheader("âž• Agregar Nuevo Plan Corporativo")
+    st.subheader("➕ Agregar Nuevo Plan Corporativo")
 
     if not permiso_crear:
-        st.warning("ðŸ”’ Tu usuario tiene acceso de solo lectura. No puedes crear ni editar planes.")
+        st.warning("🔒 Tu usuario tiene acceso de solo lectura. No puedes crear ni editar planes.")
     
     if not api_key and st.session_state.rol == "superadministrador":
-        st.info("ðŸ’¡ Configura tu API Key de Gemini en la barra lateral para habilitar sugerencias inteligentes (no es obligatorio para guardar planes)")
+        st.info("💡 Configura tu API Key de Gemini en la barra lateral para habilitar sugerencias inteligentes (no es obligatorio para guardar planes)")
 
     col1, col2 = st.columns(2)
     
     with col1:
-        numero = st.text_input("ðŸ“ž NÃºmero Corporativo", placeholder="Ej: +504-2234-5678")
+        numero = st.text_input("📞 Número Corporativo", placeholder="Ej: +504-2234-5678")
         st.caption("Formato sugerido: +504-2234-5678")
-        st.caption("Se permiten nombres repetidos; el nÃºmero corporativo debe ser Ãºnico.")
-        nombre_personal = st.text_input("ðŸ‘¤ Nombre del Personal", placeholder="Ej: Juan PÃ©rez")
-        area = st.text_input("ðŸ¢ Ãrea", placeholder="Ej: Ventas")
-        operador = st.text_input("ðŸ“¶ Operador", value="TIGO")
-        perfil_profesional = st.text_input("ðŸŽ“ Perfil Profesional", placeholder="Ej: Ingeniero de Soporte")
-        dispositivo_asignado = st.text_input("ðŸ“± Dispositivo Asignado", placeholder="Ej: Samsung Galaxy S23")
-        marca_dispositivo = st.text_input("ðŸ·ï¸ Marca", placeholder="Ej: Samsung")
-        modelo_dispositivo = st.text_input("ðŸ†” Modelo", placeholder="Ej: S23")
-        serie_dispositivo = st.text_input("ðŸ”¢ Serie del Dispositivo", placeholder="Ej: SN-ABC123456")
+        st.caption("Se permiten nombres repetidos; el número corporativo debe ser único.")
+        nombre_personal = st.text_input("👤 Nombre del Personal", placeholder="Ej: Juan Pérez")
+        area = st.text_input("🏢 Área", placeholder="Ej: Ventas")
+        operador = st.text_input("📶 Operador", value="TIGO")
+        perfil_profesional = st.text_input("🎓 Perfil Profesional", placeholder="Ej: Ingeniero de Soporte")
+        dispositivo_asignado = st.text_input("📱 Dispositivo Asignado", placeholder="Ej: Samsung Galaxy S23")
+        marca_dispositivo = st.text_input("🏷️ Marca", placeholder="Ej: Samsung")
+        modelo_dispositivo = st.text_input("🆔 Modelo", placeholder="Ej: S23")
+        serie_dispositivo = st.text_input("🔢 Serie del Dispositivo", placeholder="Ej: SN-ABC123456")
 
     with col2:
-        departamento = st.text_input("ðŸ›ï¸ Departamento", placeholder="Ej: Comercial")
-        valor_usd = st.number_input("ðŸ’µ Valor del Plan (USD)", min_value=0.0, step=0.01)
-        imei1 = st.text_input("ðŸ“³ IMEI 1", placeholder="Ej: 123456789012345")
-        imei2 = st.text_input("ðŸ“³ IMEI 2", placeholder="Ej: 543210987654321")
-        observaciones = st.text_area("ðŸ“ Observaciones", height=100)
-        motivo_cambio_dispositivo = st.text_input("ðŸ“ Motivo de cambio de dispositivo (si aplica)", "")
+        departamento = st.text_input("🏛️ Departamento", placeholder="Ej: Comercial")
+        valor_usd = st.number_input("💵 Valor del Plan (USD)", min_value=0.0, step=0.01)
+        imei1 = st.text_input("📳 IMEI 1", placeholder="Ej: 123456789012345")
+        imei2 = st.text_input("📳 IMEI 2", placeholder="Ej: 543210987654321")
+        observaciones = st.text_area("📝 Observaciones", height=100)
+        motivo_cambio_dispositivo = st.text_input("📝 Motivo de cambio de dispositivo (si aplica)", "")
 
         valor_lempiras = valor_usd * st.session_state.tasa_usd_hnl
         st.info(f"Total en Lempiras: L {valor_lempiras:,.2f} (Tasa: {st.session_state.tasa_usd_hnl:,.2f})")
 
     if api_key:
-        if st.button("âœ¨ Sugerir InformaciÃ³n con Gemini"):
+        if st.button("✨ Sugerir Información con Gemini"):
             if numero and nombre_personal:
                 prompt = f"""
-                Analiza la siguiente informaciÃ³n de un plan corporativo y proporciona sugerencias:
-                - NÃºmero: {numero}
+                Analiza la siguiente información de un plan corporativo y proporciona sugerencias:
+                - Número: {numero}
                 - Personal: {nombre_personal}
-                - Ãrea: {area if area else 'No especificada'}
+                - Área: {area if area else 'No especificada'}
                 - Departamento: {departamento if departamento else 'No especificado'}
                 - Valor: ${valor_usd if valor_usd > 0 else 'No especificado'}
                 
                 Proporciona:
-                1. ValidaciÃ³n del nÃºmero telefÃ³nico
-                2. Recomendaciones para clasificaciÃ³n
+                1. Validación del número telefónico
+                2. Recomendaciones para clasificación
                 3. Sugerencias de observaciones relevantes
-                4. VerificaciÃ³n de duplicados potenciales
+                4. Verificación de duplicados potenciales
                 
                 Responde de forma concisa y profesional.
                 """
 
-                with st.spinner("ðŸ¤– Gemini estÃ¡ analizando..."):
+                with st.spinner("🤖 Gemini está analizando..."):
                     try:
                         response = model.generate_content(prompt)
                         st.info(response.text)
                     except Exception as e:
-                        st.error(f"âŒ Error al consultar Gemini: {e}")
-                        st.info("AsegÃºrate de tener una API Key vÃ¡lida y conexiÃ³n estable.")
+                        st.error(f"❌ Error al consultar Gemini: {e}")
+                        st.info("Asegúrate de tener una API Key válida y conexión estable.")
     else:
-        st.info("ðŸ’¡ Escribe una API Key para habilitar sugerencias inteligentes y validaciones con Gemini")
+        st.info("💡 Escribe una API Key para habilitar sugerencias inteligentes y validaciones con Gemini")
 
-    # BotÃ³n guardar
-    if st.button("ðŸ’¾ Guardar Plan", width="stretch", type="primary", disabled=not permiso_crear):
+    # Botón guardar
+    if st.button("💾 Guardar Plan", width="stretch", type="primary", disabled=not permiso_crear):
         if numero and nombre_personal and area and departamento and perfil_profesional:
             numero_limpio = normalizar_numero_telefonico(numero)
             if not re.match(r"^\+?[0-9\-\s]{7,20}$", numero_limpio):
-                st.error("âŒ El nÃºmero corporativo tiene formato invÃ¡lido.")
+                st.error("❌ El número corporativo tiene formato inválido.")
             existentes = {normalizar_numero_telefonico(p.get('numero', '')) for p in st.session_state.planes}
             if numero_limpio in existentes:
-                st.error("âŒ Este nÃºmero corporativo ya existe en el sistema.")
+                st.error("❌ Este número corporativo ya existe en el sistema.")
             elif re.match(r"^\+?[0-9\-\s]{7,20}$", numero_limpio):
                 dispositivo_historial = []
                 if motivo_cambio_dispositivo:
@@ -1872,18 +1845,18 @@ with tab2:
                 st.session_state.planes.append(nuevo_plan)
                 guardar_planes()
                 registrar_movimiento("Agregar Plan", f"{numero} - {nombre_personal} - {area} - {departamento} - Dispositivo: {dispositivo_asignado}")
-                st.success("âœ… Plan agregado exitosamente!")
+                st.success("✅ Plan agregado exitosamente!")
                 st.balloons()
         else:
-            st.error("âŒ Por favor completa los campos obligatorios: NÃºmero, Nombre, Ãrea, Departamento y Perfil Profesional")
+            st.error("❌ Por favor completa los campos obligatorios: Número, Nombre, Área, Departamento y Perfil Profesional")
 
 # ============ TAB 3: GESTIONAR PLANES ============
 with tab3:
-    st.subheader("ðŸ“‹ Gestionar Planes Corporativos")
+    st.subheader("📋 Gestionar Planes Corporativos")
     render_bloque_operador_tigo()
 
     if not (permiso_editar or permiso_eliminar):
-        st.info("ðŸ‘€ Modo solo lectura: puedes visualizar informaciÃ³n, pero no modificarla.")
+        st.info("👀 Modo solo lectura: puedes visualizar información, pero no modificarla.")
     
     if st.session_state.planes:
         df = pd.DataFrame(st.session_state.planes)
@@ -1892,13 +1865,13 @@ with tab3:
         col_filter1, col_filter2, col_filter3, col_filter4 = st.columns(4)
         
         with col_filter1:
-            filtro_area = st.multiselect("Filtrar por Ãrea:", options=df['area'].unique())
+            filtro_area = st.multiselect("Filtrar por Área:", options=df['area'].unique())
         
         with col_filter2:
             filtro_dept = st.multiselect("Filtrar por Departamento:", options=df['departamento'].unique())
         
         with col_filter3:
-            valor_min = st.number_input("Valor mÃ­nimo (USD):", min_value=0.0, step=0.01)
+            valor_min = st.number_input("Valor mínimo (USD):", min_value=0.0, step=0.01)
 
         with col_filter4:
             filtro_busqueda = st.text_input("Buscar # o nombre:", placeholder="Ej: +504 o Juan")
@@ -1930,11 +1903,11 @@ with tab3:
             hide_index=True,
             height=430,
             column_config={
-                "numero": st.column_config.TextColumn("NÃºmero", width="medium"),
+                "numero": st.column_config.TextColumn("Número", width="medium"),
                 "operador": st.column_config.TextColumn("Operador", width="small"),
                 "estado_linea": st.column_config.TextColumn("Estado", width="small"),
                 "nombre_personal": st.column_config.TextColumn("Asignado a", width="medium"),
-                "area": st.column_config.TextColumn("Ãrea", width="medium"),
+                "area": st.column_config.TextColumn("Área", width="medium"),
                 "departamento": st.column_config.TextColumn("Departamento", width="medium"),
                 "perfil_profesional": st.column_config.TextColumn("Perfil", width="large"),
                 "dispositivo_asignado": st.column_config.TextColumn("Dispositivo", width="medium"),
@@ -1949,11 +1922,11 @@ with tab3:
         
         st.markdown("---")
         
-        # Opciones de gestiÃ³n
-        col_gestiÃ³n1, col_gestiÃ³n2, col_gestiÃ³n3 = st.columns(3)
+        # Opciones de gestión
+        col_gestion1, col_gestion2, col_gestion3 = st.columns(3)
         
-        with col_gestiÃ³n1:
-            st.markdown("**ðŸ“¥ Descargar Reporte:**")
+        with col_gestion1:
+            st.markdown("**📥 Descargar Reporte:**")
             formato_descarga = st.selectbox(
                 "Formato de descarga:",
                 ["CSV", "PDF", "Excel"],
@@ -1964,11 +1937,11 @@ with tab3:
             n_filtrados = len(df_filtrado)
             n_total = len(df)
             etiqueta_filtro = (
-                f"({n_filtrados} de {n_total} registros â€” filtrados)"
+                f"({n_filtrados} de {n_total} registros — filtrados)"
                 if n_filtrados < n_total
-                else f"({n_total} registros â€” todos)"
+                else f"({n_total} registros — todos)"
             )
-            if st.button(f"ðŸ“¥ Descargar {etiqueta_filtro}", disabled=not permiso_exportar):
+            if st.button(f"📥 Descargar {etiqueta_filtro}", disabled=not permiso_exportar):
                 from io import BytesIO as _BytesIO
                 # Siempre exportar el conjunto filtrado visible
                 _df_export = df_filtrado.copy()
@@ -2006,7 +1979,7 @@ with tab3:
                             key="btn_excel_gestionar",
                         )
                     else:
-                        st.warning("âš ï¸ Instala xlsxwriter o openpyxl: `pip install openpyxl`")
+                        st.warning("⚠️ Instala xlsxwriter o openpyxl: `pip install openpyxl`")
 
                 elif formato_descarga == "PDF":
                     if FPDF is not None:
@@ -2060,23 +2033,23 @@ with tab3:
                         except Exception as _pdf_error:
                             st.warning(f"No se pudo preparar el PDF: {_pdf_error}")
                     else:
-                        st.warning("âš ï¸ Instala fpdf2: `pip install fpdf2`")
+                        st.warning("⚠️ Instala fpdf2: `pip install fpdf2`")
         
-        with col_gestiÃ³n2:
-            if st.button("ðŸ—‘ï¸ Limpiar todos los datos", disabled=not permiso_eliminar):
-                if st.confirm("Â¿EstÃ¡s seguro de que deseas eliminar todos los planes?"):
+        with col_gestion2:
+            if st.button("🗑️ Limpiar todos los datos", disabled=not permiso_eliminar):
+                if st.confirm("¿Estás seguro de que deseas eliminar todos los planes?"):
                     st.session_state.planes = []
                     guardar_planes()
                     st.rerun()
         
-        with col_gestiÃ³n3:
-            if st.button("ðŸ”„ Actualizar vista"):
+        with col_gestion3:
+            if st.button("🔄 Actualizar vista"):
                 st.rerun()
 
         st.markdown("---")
-        st.subheader("âœï¸ EdiciÃ³n de Planes")
+        st.subheader("✏️ Edición de Planes")
 
-        # EdiciÃ³n rÃ¡pida de un plan existente (se muestra debajo de la tabla)
+        # Edición rápida de un plan existente (se muestra debajo de la tabla)
         indice_seleccionado = st.selectbox(
             "Selecciona un plan para editar:",
             options=list(range(len(st.session_state.planes))),
@@ -2087,29 +2060,29 @@ with tab3:
         plan_sel = st.session_state.planes[indice_seleccionado]
 
         with st.form(key='form_editar_plan'):
-            numero_edit = st.text_input("ðŸ“ž NÃºmero Corporativo", value=plan_sel.get('numero', ''))
-            operador_edit = st.text_input("ðŸ“¶ Operador", value=plan_sel.get('operador', 'TIGO'))
-            nombre_edit = st.text_input("ðŸ‘¤ Nombre del Personal", value=plan_sel.get('nombre_personal', ''))
-            area_edit = st.text_input("ðŸ¢ Ãrea", value=plan_sel.get('area', ''))
-            departamento_edit = st.text_input("ðŸ›ï¸ Departamento", value=plan_sel.get('departamento', ''))
-            perfil_edit = st.text_input("ðŸŽ“ Perfil Profesional", value=plan_sel.get('perfil_profesional', ''))
-            valor_usd_edit = st.number_input("ðŸ’µ Valor del Plan (USD)", min_value=0.0, step=0.01, value=float(plan_sel.get('valor_usd', 0)))
-            observaciones_edit = st.text_area("ðŸ“ Observaciones", value=plan_sel.get('observaciones', ''), height=100)
-            tasa_manual_edit = st.number_input("ðŸ’± Tasa USD a Lempira (HNL)", min_value=0.0, value=float(plan_sel.get('tasa_usd_hnl', 24.0)), step=0.01)
+            numero_edit = st.text_input("📞 Número Corporativo", value=plan_sel.get('numero', ''))
+            operador_edit = st.text_input("📶 Operador", value=plan_sel.get('operador', 'TIGO'))
+            nombre_edit = st.text_input("👤 Nombre del Personal", value=plan_sel.get('nombre_personal', ''))
+            area_edit = st.text_input("🏢 Área", value=plan_sel.get('area', ''))
+            departamento_edit = st.text_input("🏛️ Departamento", value=plan_sel.get('departamento', ''))
+            perfil_edit = st.text_input("🎓 Perfil Profesional", value=plan_sel.get('perfil_profesional', ''))
+            valor_usd_edit = st.number_input("💵 Valor del Plan (USD)", min_value=0.0, step=0.01, value=float(plan_sel.get('valor_usd', 0)))
+            observaciones_edit = st.text_area("📝 Observaciones", value=plan_sel.get('observaciones', ''), height=100)
+            tasa_manual_edit = st.number_input("💱 Tasa USD a Lempira (HNL)", min_value=0.0, value=float(plan_sel.get('tasa_usd_hnl', 24.0)), step=0.01)
 
-            dispositivo_asignado_edit = st.text_input("ðŸ“± Dispositivo Asignado", value=plan_sel.get('dispositivo_asignado', ''))
-            marca_dispositivo_edit = st.text_input("ðŸ·ï¸ Marca", value=plan_sel.get('marca', ''))
-            modelo_dispositivo_edit = st.text_input("ðŸ†” Modelo", value=plan_sel.get('modelo', ''))
-            serie_dispositivo_edit = st.text_input("ðŸ”¢ Serie del Dispositivo", value=plan_sel.get('serie_dispositivo', ''))
-            imei1_edit = st.text_input("ðŸ“³ IMEI 1", value=plan_sel.get('imei1', ''))
-            imei2_edit = st.text_input("ðŸ“³ IMEI 2", value=plan_sel.get('imei2', ''))
-            motivo_cambio_dispositivo_edit = st.text_input("ðŸ“ Motivo de cambio de dispositivo (si aplica)", "")
+            dispositivo_asignado_edit = st.text_input("📱 Dispositivo Asignado", value=plan_sel.get('dispositivo_asignado', ''))
+            marca_dispositivo_edit = st.text_input("🏷️ Marca", value=plan_sel.get('marca', ''))
+            modelo_dispositivo_edit = st.text_input("🆔 Modelo", value=plan_sel.get('modelo', ''))
+            serie_dispositivo_edit = st.text_input("🔢 Serie del Dispositivo", value=plan_sel.get('serie_dispositivo', ''))
+            imei1_edit = st.text_input("📳 IMEI 1", value=plan_sel.get('imei1', ''))
+            imei2_edit = st.text_input("📳 IMEI 2", value=plan_sel.get('imei2', ''))
+            motivo_cambio_dispositivo_edit = st.text_input("📝 Motivo de cambio de dispositivo (si aplica)", "")
 
-            guardar_edicion = st.form_submit_button("ðŸ’¾ Guardar cambios", disabled=not permiso_editar)
+            guardar_edicion = st.form_submit_button("💾 Guardar cambios", disabled=not permiso_editar)
             if guardar_edicion:
                 numero_edit = normalizar_numero_telefonico(numero_edit)
                 if not numero_edit:
-                    st.error("âŒ El nÃºmero corporativo es obligatorio.")
+                    st.error("❌ El número corporativo es obligatorio.")
                     st.stop()
 
                 existentes_otros = {
@@ -2118,7 +2091,7 @@ with tab3:
                     if idx != indice_seleccionado
                 }
                 if numero_edit in existentes_otros:
-                    st.error("âŒ Ya existe otro plan con este nÃºmero corporativo.")
+                    st.error("❌ Ya existe otro plan con este número corporativo.")
                     st.stop()
 
                 dispositivo_historial_actual = plan_sel.get('dispositivo_historial', [])
@@ -2144,9 +2117,9 @@ with tab3:
                         dispositivo_historial_actual.append(cambio_entry)
                         guardar_planes()
                         registrar_movimiento("Cambio de Dispositivo", f"{numero_edit} - {nombre_edit} - motivo: {motivo_cambio_dispositivo_edit}")
-                        st.info("â„¹ï¸ Historial de dispositivo actualizado.")
+                        st.info("ℹ️ Historial de dispositivo actualizado.")
                     else:
-                        st.warning("âš ï¸ Has modificado informaciÃ³n de dispositivo, por favor proporciona un motivo de cambio para registrar el historial.")
+                        st.warning("⚠️ Has modificado información de dispositivo, por favor proporciona un motivo de cambio para registrar el historial.")
 
                 st.session_state.planes[indice_seleccionado] = {
                     'numero': numero_edit,
@@ -2170,41 +2143,41 @@ with tab3:
                 }
                 guardar_planes()
                 registrar_movimiento("Editar Plan", f"{numero_edit} - {nombre_edit} - {area_edit} - {departamento_edit}")
-                st.success("âœ… Plan actualizado correctamente")
+                st.success("✅ Plan actualizado correctamente")
                 try:
                     st.rerun()
                 except Exception:
                     pass
 
-        if st.button("ðŸ—‘ï¸ Eliminar plan seleccionado", disabled=not permiso_eliminar, key="btn_eliminar_plan_tab3"):
+        if st.button("🗑️ Eliminar plan seleccionado", disabled=not permiso_eliminar, key="btn_eliminar_plan_tab3"):
             eliminado = st.session_state.planes.pop(indice_seleccionado)
             guardar_planes()
             registrar_movimiento("Eliminar Plan", f"{eliminado.get('numero')} - {eliminado.get('nombre_personal')} - {eliminado.get('area')} - {eliminado.get('departamento')}")
-            st.success("âœ… Plan eliminado")
+            st.success("✅ Plan eliminado")
             try:
                 st.rerun()
             except Exception:
                 pass
 
         st.markdown("---")
-        st.subheader("ðŸ“Œ Historial de Dispositivo Asignado")
+        st.subheader("📌 Historial de Dispositivo Asignado")
         historial = plan_sel.get('dispositivo_historial', [])
         if historial:
             for evento in sorted(historial, key=lambda x: x.get('fecha', ''), reverse=True):
                 st.write(f"- {evento.get('fecha')} / {evento.get('usuario')} / Motivo: {evento.get('motivo')}")
                 st.write(f"  Dispositivo: {evento.get('dispositivo_asignado')} | Marca: {evento.get('marca')} | Modelo: {evento.get('modelo')} | Serie: {evento.get('serie_dispositivo')} | IMEI1: {evento.get('imei1')} | IMEI2: {evento.get('imei2')}")
         else:
-            st.info("AÃºn no hay cambios de dispositivo registrados para este plan.")
+            st.info("Aún no hay cambios de dispositivo registrados para este plan.")
     
     else:
-        st.info("ðŸ“Œ No hay planes registrados aÃºn")
+        st.info("📌 No hay planes registrados aún")
 
-# ============ TAB 4: CONFIGURACIÃ“N ============
+# ============ TAB 4: CONFIGURACIÓN ============
 with tab4:
-    st.subheader("âš™ï¸ ConfiguraciÃ³n y Datos")
+    st.subheader("⚙️ Configuración y Datos")
 
     # ---- Recalcular planes con tasa actual ----
-    st.markdown("### ðŸ’± Recalcular Planes con Tasa Actual")
+    st.markdown("### 💱 Recalcular Planes con Tasa Actual")
     tasa_vigente_tab4 = float(st.session_state.get("tasa_usd_hnl", 24.0))
     st.info(
         f"Tasa vigente: **{tasa_vigente_tab4:.4f} HNL/USD** | "
@@ -2212,7 +2185,7 @@ with tab4:
         f"Actualizada: {st.session_state.get('tasa_actualizada_en', 'N/D')}"
     )
     if st.button(
-        f"ðŸ” Recalcular valor HNL de todos los planes ({len(st.session_state.planes)} registros)",
+        f"🔁 Recalcular valor HNL de todos los planes ({len(st.session_state.planes)} registros)",
         disabled=not st.session_state.get("puede_editar", False),
     ):
         if st.session_state.planes:
@@ -2226,7 +2199,7 @@ with tab4:
                     pass
             guardar_planes()
             st.success(
-                f"âœ… {actualizados} planes recalculados. "
+                f"✅ {actualizados} planes recalculados. "
                 f"Valor HNL = USD x {tasa_vigente_tab4:.4f}"
             )
         else:
@@ -2235,7 +2208,7 @@ with tab4:
     st.markdown("---")
 
     # ---- Historial de tasa USD/HNL ----
-    st.markdown("### ðŸ“ˆ Historial de Tasa USD/HNL")
+    st.markdown("### 📈 Historial de Tasa USD/HNL")
     if os.path.exists(ARCHIVO_TASA_HISTORIAL):
         try:
             with open(ARCHIVO_TASA_HISTORIAL, "r", encoding="utf-8") as _fh:
@@ -2265,7 +2238,7 @@ with tab4:
                 # Boton para descargar historial CSV
                 csv_hist = _df_hist[["fecha", "hora", "tasa", "fuente"]].to_csv(index=False)
                 st.download_button(
-                    label="ðŸ“¥ Descargar historial CSV",
+                    label="📥 Descargar historial CSV",
                     data=csv_hist.encode("utf-8"),
                     file_name=f"historial_tasa_usd_hnl_{datetime.now().strftime('%Y%m%d')}.csv",
                     mime="text/csv",
@@ -2282,24 +2255,24 @@ with tab4:
     col_config1, col_config2 = st.columns(2)
     
     with col_config1:
-        st.info("**API de Gemini:** Configurada âœ…" if api_key else "**API de Gemini:** No configurada âš ï¸")
+        st.info("**API de Gemini:** Configurada ✅" if api_key else "**API de Gemini:** No configurada ⚠️")
         st.info(f"**Total de Planes:** {len(st.session_state.planes)}")
     
     with col_config2:
         if st.session_state.planes:
             df_temp = pd.DataFrame(st.session_state.planes)
-            st.info(f"**InversiÃ³n Total:** ${df_temp['valor_usd'].sum():,.2f}")
-            st.info(f"**Ãšltima ActualizaciÃ³n:** {df_temp['fecha_creacion'].iloc[-1]}")
+            st.info(f"**Inversión Total:** ${df_temp['valor_usd'].sum():,.2f}")
+            st.info(f"**Última Actualización:** {df_temp['fecha_creacion'].iloc[-1]}")
 
-    st.markdown("### ðŸ§¹ Mantenimiento de NÃºmeros")
-    st.caption("Normaliza formato (+504...) y elimina duplicados exactos por nÃºmero.")
-    if st.button("ðŸ§¹ Normalizar y deduplicar nÃºmeros", disabled=not permiso_editar):
+    st.markdown("### 🧹 Mantenimiento de Números")
+    st.caption("Normaliza formato (+504...) y elimina duplicados exactos por número.")
+    if st.button("🧹 Normalizar y deduplicar números", disabled=not permiso_editar):
         antes = len(st.session_state.planes)
         planes_limpios, cambios_numero, duplicados_eliminados = normalizar_y_deduplicar_planes(st.session_state.planes)
         st.session_state.planes = planes_limpios
         guardar_planes()
         registrar_movimiento(
-            "Mantenimiento NÃºmeros",
+            "Mantenimiento Números",
             f"cambios_formato={cambios_numero}; duplicados_eliminados={duplicados_eliminados}; total_antes={antes}; total_despues={len(planes_limpios)}",
         )
         st.success(
@@ -2309,12 +2282,12 @@ with tab4:
     
     st.markdown("---")
     
-    st.subheader("ðŸ“¤ Importar/Exportar Datos")
+    st.subheader("📤 Importar/Exportar Datos")
     
     col_import, col_export = st.columns(2)
     
     with col_import:
-        st.markdown("### ðŸ“¥ Importar datos masivos (CSV/Excel)")
+        st.markdown("### 📥 Importar datos masivos (CSV/Excel)")
         archivo_datos = st.file_uploader(
             "Selecciona un archivo de hoja de calculo",
             type=['csv', 'xlsx', 'xls'],
@@ -2335,9 +2308,9 @@ with tab4:
                     )
                     st.caption(f"Hojas detectadas: {', '.join(excel_file.sheet_names)}")
                 except ImportError:
-                    st.error("âŒ Falta una libreria para leer Excel. Instala openpyxl y vuelve a intentar.")
+                    st.error("❌ Falta una libreria para leer Excel. Instala openpyxl y vuelve a intentar.")
                 except Exception as e:
-                    st.error(f"âŒ No pude leer las hojas del Excel: {e}")
+                    st.error(f"❌ No pude leer las hojas del Excel: {e}")
 
             # Vista previa antes de importar (10 filas)
             try:
@@ -2349,14 +2322,14 @@ with tab4:
 
                 if df_preview is not None:
                     df_preview = preparar_dataframe_importacion(df_preview)
-                    st.markdown("#### ðŸ‘€ Vista previa (primeras 10 filas)")
+                    st.markdown("#### 👀 Vista previa (primeras 10 filas)")
                     st.dataframe(df_preview, width="stretch", hide_index=True)
                     st.caption(f"Columnas detectadas: {', '.join([str(c) for c in df_preview.columns])}")
             except Exception as e:
                 st.warning(f"No se pudo mostrar vista previa: {e}")
 
         if archivo_datos is not None:
-            if st.button("ðŸ”„ Cargar datos masivos", disabled=not permiso_importar):
+            if st.button("🔄 Cargar datos masivos", disabled=not permiso_importar):
                 try:
                     nombre_archivo = archivo_datos.name.lower()
                     if nombre_archivo.endswith('.csv'):
@@ -2364,13 +2337,13 @@ with tab4:
                         tipo_fuente = "CSV"
                     elif nombre_archivo.endswith('.xlsx') or nombre_archivo.endswith('.xls'):
                         if not hoja_excel:
-                            st.error("âŒ Selecciona una hoja del Excel para continuar.")
+                            st.error("❌ Selecciona una hoja del Excel para continuar.")
                             st.stop()
                         archivo_datos.seek(0)
                         df_importado = pd.read_excel(archivo_datos, sheet_name=hoja_excel)
                         tipo_fuente = f"Excel ({hoja_excel})"
                     else:
-                        st.error("âŒ Formato no soportado. Usa CSV, XLSX o XLS.")
+                        st.error("❌ Formato no soportado. Usa CSV, XLSX o XLS.")
                         st.stop()
 
                     # Normaliza nombres de columnas para soportar variaciones de encabezados.
@@ -2378,7 +2351,7 @@ with tab4:
 
                     columnas_requeridas = ['numero', 'nombre_personal', 'area', 'departamento', 'valor_usd']
                     if not all(col in df_importado.columns for col in columnas_requeridas):
-                        st.error(f"âŒ El archivo debe tener las columnas: {', '.join(columnas_requeridas)}")
+                        st.error(f"❌ El archivo debe tener las columnas: {', '.join(columnas_requeridas)}")
                     else:
                         df_importado['numero'] = df_importado['numero'].apply(normalizar_numero_telefonico)
                         if 'operador' not in df_importado.columns:
@@ -2417,24 +2390,24 @@ with tab4:
                             f"{len(st.session_state.planes)} planes importados desde {tipo_fuente}; formato_corregido={cambios_numero}; duplicados_eliminados={duplicados_eliminados}",
                         )
                         st.success(
-                            f"âœ… {len(st.session_state.planes)} planes importados desde {tipo_fuente}. "
+                            f"✅ {len(st.session_state.planes)} planes importados desde {tipo_fuente}. "
                             f"Formato corregido: {cambios_numero}. Duplicados eliminados: {duplicados_eliminados}."
                         )
                         st.rerun()
                 except ImportError:
-                    st.error("âŒ Falta una libreria para leer Excel. Instala openpyxl y vuelve a intentar.")
+                    st.error("❌ Falta una libreria para leer Excel. Instala openpyxl y vuelve a intentar.")
                 except Exception as e:
-                    st.error(f"âŒ Error al cargar el archivo: {str(e)}")
+                    st.error(f"❌ Error al cargar el archivo: {str(e)}")
     
     with col_export:
-        st.markdown("### ðŸ“¤ Exportar Datos")
+        st.markdown("### 📤 Exportar Datos")
         if st.session_state.planes:
             df = pd.DataFrame(st.session_state.planes)
 
             # Exportar como CSV
             csv_data = df.to_csv(index=False)
             st.download_button(
-                label="ðŸ“„ Descargar como CSV",
+                label="📄 Descargar como CSV",
                 data=csv_data,
                 file_name=f"planes_corporativos_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -2470,19 +2443,19 @@ with tab4:
             if excel_buffer is not None:
                 excel_buffer.seek(0)
                 st.download_button(
-                    label="ðŸ“Š Descargar como Excel",
+                    label="📊 Descargar como Excel",
                     data=excel_buffer,
                     file_name=f"planes_corporativos_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     disabled=not permiso_exportar,
                 )
             else:
-                st.warning("âš ï¸ No se encontrÃ³ biblioteca para generar Excel (xlsxwriter/openpyxl). Instala una con pip para habilitar esta opciÃ³n.")
+                st.warning("⚠️ No se encontró biblioteca para generar Excel (xlsxwriter/openpyxl). Instala una con pip para habilitar esta opción.")
 
             # Exportar como JSON
             json_data = json.dumps(st.session_state.planes, indent=2, ensure_ascii=False, default=str)
             st.download_button(
-                label="ðŸ“‹ Descargar como JSON",
+                label="📋 Descargar como JSON",
                 data=json_data,
                 file_name=f"planes_corporativos_{datetime.now().strftime('%Y%m%d')}.json",
                 mime="application/json",
@@ -2517,7 +2490,7 @@ with tab4:
                         pdf_bytes = pdf.output(dest='S').encode('latin-1')
 
                     st.download_button(
-                        label="ðŸ“• Descargar como PDF",
+                        label="📕 Descargar como PDF",
                         data=pdf_bytes,
                         file_name=f"planes_corporativos_{datetime.now().strftime('%Y%m%d')}.pdf",
                         mime="application/pdf",
@@ -2526,21 +2499,21 @@ with tab4:
                 except Exception as pdf_error:
                     st.warning(f"No se pudo generar el PDF: {pdf_error}")
             else:
-                st.warning("âš ï¸ Instala `fpdf` (pip install fpdf) para habilitar exportaciÃ³n PDF")
+                st.warning("⚠️ Instala `fpdf` (pip install fpdf) para habilitar exportación PDF")
         else:
             st.info("No hay datos para exportar")
     
     st.markdown("---")
-    st.subheader("ðŸ‘¥ GestiÃ³n de Usuarios")
+    st.subheader("👥 Gestión de Usuarios")
 
     if st.session_state.rol in ["superadministrador", "administrador"]:
         st.info("Crea usuarios, define rol y decide si cada cuenta puede editar o solo visualizar.")
         usuarios = gestor_usuarios.obtener_usuarios()
 
         with st.form(key='form_usuario'):
-            st.markdown("### âž• Crear Usuario")
+            st.markdown("### ➕ Crear Usuario")
             usuario_nuevo = st.text_input("Usuario:")
-            contrasena_nuevo = st.text_input("ContraseÃ±a:", type='password')
+            contrasena_nuevo = st.text_input("Contraseña:", type='password')
             email_nuevo = st.text_input("Email (opcional):")
             puede_editar_nuevo = st.checkbox("Puede editar datos", value=True)
 
@@ -2550,10 +2523,10 @@ with tab4:
                 rol_nuevo = "usuario"
                 st.info("Como administrador, solo puedes crear usuarios con rol usuario.")
 
-            crear = st.form_submit_button("ðŸ” Crear usuario")
+            crear = st.form_submit_button("🔐 Crear usuario")
             if crear:
                 if not usuario_nuevo or not contrasena_nuevo:
-                    st.error("Usuario y contraseÃ±a son obligatorios")
+                    st.error("Usuario y contraseña son obligatorios")
                 elif st.session_state.rol != "superadministrador" and rol_nuevo != "usuario":
                     st.error("Solo superadministrador puede crear administradores o superadministradores")
                 else:
@@ -2583,17 +2556,17 @@ with tab4:
             tabla.append({
                 "Usuario": u,
                 "Rol": data_u.get("rol", "usuario"),
-                "Puede editar": "SÃ­" if data_u.get("puede_editar", False) else "No",
-                "Crear": "SÃ­" if permisos_u.get("crear", False) else "No",
-                "Editar": "SÃ­" if permisos_u.get("editar", False) else "No",
-                "Eliminar": "SÃ­" if permisos_u.get("eliminar", False) else "No",
-                "Importar": "SÃ­" if permisos_u.get("importar", False) else "No",
-                "Exportar": "SÃ­" if permisos_u.get("exportar", False) else "No",
+                "Puede editar": "Sí" if data_u.get("puede_editar", False) else "No",
+                "Crear": "Sí" if permisos_u.get("crear", False) else "No",
+                "Editar": "Sí" if permisos_u.get("editar", False) else "No",
+                "Eliminar": "Sí" if permisos_u.get("eliminar", False) else "No",
+                "Importar": "Sí" if permisos_u.get("importar", False) else "No",
+                "Exportar": "Sí" if permisos_u.get("exportar", False) else "No",
                 "Email": data_u.get("email", ""),
             })
         st.dataframe(pd.DataFrame(tabla), width="stretch", hide_index=True)
 
-        st.markdown("### âœï¸ Editar Permisos / ContraseÃ±a")
+        st.markdown("### ✏️ Editar Permisos / Contraseña")
         usuario_obj = st.selectbox("Selecciona un usuario", options=usuarios, key="usuario_objetivo")
         data_u = gestor_usuarios.usuarios.get(usuario_obj, {})
         rol_actual_obj = data_u.get("rol", "usuario")
@@ -2603,7 +2576,7 @@ with tab4:
             st.warning("Solo superadministrador puede editar cuentas administrador/superadministrador.")
         else:
             with st.form(key="form_editar_usuario"):
-                nueva_password = st.text_input("Nueva contraseÃ±a (opcional)", type="password")
+                nueva_password = st.text_input("Nueva contraseña (opcional)", type="password")
                 nuevo_email = st.text_input("Email", value=data_u.get("email", ""))
                 puede_editar_obj = st.checkbox("Puede editar datos", value=bool(data_u.get("puede_editar", False)))
 
@@ -2639,7 +2612,7 @@ with tab4:
                     nuevo_rol = None
                     st.info(f"Rol actual: {rol_actual_obj}")
 
-                guardar_cambios = st.form_submit_button("ðŸ’¾ Guardar cambios del usuario")
+                guardar_cambios = st.form_submit_button("💾 Guardar cambios del usuario")
                 if guardar_cambios:
                     exito, msg = gestor_usuarios.actualizar_usuario(
                         usuario_obj,
@@ -2664,10 +2637,10 @@ with tab4:
                         st.error(msg)
 
             if usuario_obj == st.session_state.usuario_actual:
-                st.caption("No puedes eliminar tu propio usuario mientras estÃ¡s en sesiÃ³n.")
+                st.caption("No puedes eliminar tu propio usuario mientras estás en sesión.")
             elif usuario_obj in ["superadmin", "admin"]:
-                st.caption("Las cuentas administrativas base estÃ¡n protegidas y no se pueden eliminar.")
-            elif st.button("ðŸ—‘ï¸ Eliminar usuario seleccionado"):
+                st.caption("Las cuentas administrativas base están protegidas y no se pueden eliminar.")
+            elif st.button("🗑️ Eliminar usuario seleccionado"):
                 exito, msg = gestor_usuarios.eliminar_usuario(usuario_obj)
                 if exito:
                     registrar_movimiento("Eliminar Usuario", usuario_obj)
@@ -2679,7 +2652,7 @@ with tab4:
         st.info("Solo administradores o superadministradores pueden gestionar usuarios")
 
     st.markdown("---")
-    st.subheader("ï¿½ Historial de Movimientos")
+    st.subheader("� Historial de Movimientos")
     if st.session_state.movimientos:
         df_mov = pd.DataFrame(st.session_state.movimientos)
         col_mov1, col_mov2 = st.columns([2, 1])
@@ -2712,17 +2685,17 @@ with tab4:
 
             pdf_audit_bytes = pdf_audit.output(dest='S').encode('latin-1', errors='replace')
             st.download_button(
-                label="ðŸ“„ Descargar Auditoria PDF",
+                label="📄 Descargar Auditoria PDF",
                 data=pdf_audit_bytes,
                 file_name=f"auditoria_{fecha_desde}_{fecha_hasta}.pdf",
                 mime="application/pdf",
                 disabled=not permiso_exportar,
             )
     else:
-        st.info("No hay movimientos registrados aÃºn")
+        st.info("No hay movimientos registrados aún")
 
     st.markdown("---")
-    st.subheader("ï¿½ðŸ“Š Vista JSON de Datos")
+    st.subheader("�📊 Vista JSON de Datos")
     if st.session_state.planes:
         st.json(st.session_state.planes)
     else:
@@ -2732,7 +2705,7 @@ with tab4:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: gray; font-size: 12px;'>
-    <p>Sistema de GestiÃ³n de Planes TelefÃ³nicos Corporativos con Gemini AI</p>
-    <p>Ãšltima actualizaciÃ³n: 2024</p>
+    <p>Sistema de Gestión de Planes Telefónicos Corporativos con Gemini AI</p>
+    <p>Última actualización: 2024</p>
 </div>
 """, unsafe_allow_html=True)
