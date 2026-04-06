@@ -1,0 +1,22 @@
+{
+  "admin": {
+    "contraseña": "admin123",
+    "rol": "usuario",
+    "email": "admin@empresa.com",
+    "puede_editar": false
+  },
+  "RONMEL EDGARDO L": {
+    "contraseña": "RonmelEdgardo.90",
+    "rol": "superadministrador",
+    "puede_editar": true,
+    "email": "edgardoronmel1@gmail.com",
+    "fecha_creacion": "2026-04-02T23:25:19.901856"
+  },
+  "OLIVER E": {
+    "contraseña": "12345",
+    "rol": "usuario",
+    "email": "furiaseattle2023@gmail.com",
+    "puede_editar": false,
+    "fecha_creacion": "2026-04-03T17:28:18.095720"
+  }
+}

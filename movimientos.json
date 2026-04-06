@@ -1,0 +1,62 @@
+[
+  {
+    "fecha": "2026-04-03 16:56:01",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Editar Plan",
+    "detalle": "+50492684538 - RONMEL EDGARDO LOPEZ - SOPORTE TECNICO - IT Y SEGURIDAD"
+  },
+  {
+    "fecha": "2026-04-03 16:56:12",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Editar Plan",
+    "detalle": "+50492684538 - RONMEL EDGARDO LOPEZ - SOPORTE TECNICO - IT Y SEGURIDAD"
+  },
+  {
+    "fecha": "2026-04-03 17:27:46",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Editar Usuario",
+    "detalle": "admin - rol=administrador - puede_editar=False"
+  },
+  {
+    "fecha": "2026-04-03 17:28:18",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Crear Usuario",
+    "detalle": "OLIVER E - rol=usuario - puede_editar=False"
+  },
+  {
+    "fecha": "2026-04-03 17:32:02",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Editar Usuario",
+    "detalle": "admin - rol=usuario - puede_editar=False"
+  },
+  {
+    "fecha": "2026-04-03 17:32:05",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Editar Usuario",
+    "detalle": "admin - rol=usuario - puede_editar=False"
+  },
+  {
+    "fecha": "2026-04-03 18:17:42",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Editar Usuario",
+    "detalle": "OLIVER E - rol=usuario - puede_editar=False"
+  },
+  {
+    "fecha": "2026-04-05 02:29:25",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Importar lineas nuevas",
+    "detalle": "209 lineas agregadas; 0 duplicadas; 0 invalidas"
+  },
+  {
+    "fecha": "2026-04-05 18:19:38",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Eliminar Plan",
+    "detalle": "+50488828593 - OLIVER EDGARDO LOPEZ - MAYOREO - VENTAS"
+  },
+  {
+    "fecha": "2026-04-05 18:20:05",
+    "usuario": "RONMEL EDGARDO L",
+    "tipo": "Eliminar Plan",
+    "detalle": "+50498729511 - ERICK DONOBAN TURCIOS - SOPORTE TECNICO - IT Y SEGURIDAD"
+  }
+]
