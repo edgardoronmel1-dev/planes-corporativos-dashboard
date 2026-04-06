@@ -430,7 +430,7 @@ class GestorUsuarios:
         with open(self.archivo, 'w', encoding='utf-8') as f:
             json.dump(self.usuarios, f, ensure_ascii=False, indent=2)
     
-    def crear_usuario(self, usuario, contraseÃ±a, rol="usuario", email="", puede_editar=True):
+    def crear_usuario(self, usuario, contrasena, rol="usuario", email="", puede_editar=True):
         if usuario in self.usuarios:
             return False, "El usuario ya existe"
 
@@ -438,7 +438,7 @@ class GestorUsuarios:
             return False, "Rol no vÃ¡lido"
         
         self.usuarios[usuario] = {
-            "contraseÃ±a": contraseÃ±a,
+            "contraseÃ±a": contrasena,
             "rol": rol,
             "email": email,
             "puede_editar": bool(puede_editar),
@@ -454,15 +454,15 @@ class GestorUsuarios:
         self.guardar_usuarios()
         return True, "Usuario creado exitosamente"
 
-    def actualizar_usuario(self, usuario, contraseÃ±a=None, rol=None, email=None, puede_editar=None, permisos=None):
+    def actualizar_usuario(self, usuario, contrasena=None, rol=None, email=None, puede_editar=None, permisos=None):
         if usuario not in self.usuarios:
             return False, "Usuario no encontrado"
 
         if rol and rol not in ["usuario", "administrador", "superadministrador"]:
             return False, "Rol no vÃ¡lido"
 
-        if contraseÃ±a:
-            self.usuarios[usuario]["contraseÃ±a"] = contraseÃ±a
+        if contrasena:
+            self.usuarios[usuario]["contraseÃ±a"] = contrasena
         if rol:
             self.usuarios[usuario]["rol"] = rol
         if email is not None:
@@ -475,11 +475,11 @@ class GestorUsuarios:
         self.guardar_usuarios()
         return True, "Usuario actualizado exitosamente"
     
-    def validar_usuario(self, usuario, contraseÃ±a):
+    def validar_usuario(self, usuario, contrasena):
         if usuario not in self.usuarios:
             return False, "Usuario no encontrado"
         
-        if self.usuarios[usuario]["contraseÃ±a"] != contraseÃ±a:
+        if self.usuarios[usuario]["contraseÃ±a"] != contrasena:
             return False, "ContraseÃ±a incorrecta"
         
         return True, self.usuarios[usuario]
@@ -1200,13 +1200,13 @@ def pantalla_login():
         st.markdown("---")
         
         usuario = st.text_input("ðŸ‘¤ Usuario:")
-        contraseÃ±a = st.text_input("ðŸ”‘ ContraseÃ±a:", type="password")
+        contrasena = st.text_input("ðŸ”‘ ContraseÃ±a:", type="password")
         
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
             if st.button("ðŸš€ Iniciar SesiÃ³n", width="stretch"):
-                valido, info = gestor_usuarios.validar_usuario(usuario, contraseÃ±a)
+                valido, info = gestor_usuarios.validar_usuario(usuario, contrasena)
                 if valido:
                     st.session_state.usuario_actual = usuario
                     st.session_state.rol = info.get("rol", "usuario")
@@ -1227,12 +1227,12 @@ def pantalla_login():
             st.subheader("ðŸ“ Crear Nueva Cuenta")
             
             nuevo_usuario = st.text_input("Nuevo usuario:")
-            nueva_contraseÃ±a = st.text_input("Nueva contraseÃ±a:", type="password")
+            nueva_contrasena = st.text_input("Nueva contraseÃ±a:", type="password")
             email = st.text_input("Email (opcional):")
             
             if st.button("âœ… Registrarse", width="stretch"):
-                if nuevo_usuario and nueva_contraseÃ±a:
-                    exito, mensaje = gestor_usuarios.crear_usuario(nuevo_usuario, nueva_contraseÃ±a, "usuario", email)
+                if nuevo_usuario and nueva_contrasena:
+                    exito, mensaje = gestor_usuarios.crear_usuario(nuevo_usuario, nueva_contrasena, "usuario", email)
                     if exito:
                         st.success(f"âœ… {mensaje}")
                         st.session_state.mostrar_registro = False
@@ -2643,7 +2643,7 @@ with tab4:
                 if guardar_cambios:
                     exito, msg = gestor_usuarios.actualizar_usuario(
                         usuario_obj,
-                        contraseÃ±a=nueva_password if nueva_password else None,
+                        contrasena=nueva_password if nueva_password else None,
                         rol=nuevo_rol,
                         email=nuevo_email,
                         puede_editar=puede_editar_obj,
