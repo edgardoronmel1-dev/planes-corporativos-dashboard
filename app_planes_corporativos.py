@@ -1179,7 +1179,56 @@ def construir_tabla_planes_profesional(df_tabla):
 
     columnas_existentes = [c for c in columnas_preferidas if c in df_vista.columns]
     df_vista = df_vista[columnas_existentes]
+    df_vista.insert(0, 'item', range(1, len(df_vista) + 1))
     return df_vista
+
+
+def construir_resumen_lineas(df_filtrado, filtro_area=None):
+    """Construye un resumen final con el total visible y el detalle por area filtrada."""
+    filtro_area = filtro_area or []
+    total_lineas = len(df_filtrado)
+    filas_resumen = []
+
+    if filtro_area and 'area' in df_filtrado.columns:
+        conteos_area = (
+            df_filtrado['area']
+            .fillna('Sin area')
+            .astype(str)
+            .str.strip()
+            .replace('', 'Sin area')
+            .value_counts()
+            .sort_index()
+        )
+        for area, cantidad in conteos_area.items():
+            filas_resumen.append({
+                'Resumen': 'Area filtrada',
+                'Detalle': area,
+                'Lineas': int(cantidad),
+            })
+
+    filas_resumen.append({
+        'Resumen': 'TOTAL FINAL',
+        'Detalle': 'Lineas visibles en la tabla',
+        'Lineas': int(total_lineas),
+    })
+
+    return pd.DataFrame(filas_resumen)
+
+
+def preparar_tabla_exportacion(df_tabla, incluir_total=True):
+    """Prepara la tabla exportable con item correlativo y una fila final de total."""
+    df_export = construir_tabla_planes_profesional(df_tabla).copy()
+
+    if incluir_total:
+        fila_total = {col: '' for col in df_export.columns}
+        fila_total['numero'] = 'TOTAL'
+        if 'nombre_personal' in fila_total:
+            fila_total['nombre_personal'] = f"{len(df_export)} lineas"
+        if 'item' in fila_total:
+            fila_total['item'] = ''
+        df_export = pd.concat([df_export, pd.DataFrame([fila_total])], ignore_index=True)
+
+    return df_export
 
 if 'preferencias' not in st.session_state:
     st.session_state.preferencias = {
@@ -1903,6 +1952,7 @@ with tab3:
             hide_index=True,
             height=430,
             column_config={
+                "item": st.column_config.NumberColumn("Item", format="%d", width="small"),
                 "numero": st.column_config.TextColumn("Número", width="medium"),
                 "operador": st.column_config.TextColumn("Operador", width="small"),
                 "estado_linea": st.column_config.TextColumn("Estado", width="small"),
@@ -1917,6 +1967,18 @@ with tab3:
                 "valor_usd": st.column_config.NumberColumn("Valor USD", format="$ %.2f"),
                 "valor_hnl": st.column_config.NumberColumn("Valor HNL", format="L %.2f"),
                 "fecha_creacion": st.column_config.TextColumn("Fecha", width="medium"),
+            },
+        )
+
+        df_resumen_lineas = construir_resumen_lineas(df_filtrado, filtro_area)
+        st.dataframe(
+            df_resumen_lineas,
+            width="stretch",
+            hide_index=True,
+            column_config={
+                "Resumen": st.column_config.TextColumn("Resumen", width="medium"),
+                "Detalle": st.column_config.TextColumn("Detalle", width="large"),
+                "Lineas": st.column_config.NumberColumn("Cantidad de lineas", format="%d"),
             },
         )
         
@@ -1944,7 +2006,8 @@ with tab3:
             if st.button(f"📥 Descargar {etiqueta_filtro}", disabled=not permiso_exportar):
                 from io import BytesIO as _BytesIO
                 # Siempre exportar el conjunto filtrado visible
-                _df_export = df_filtrado.copy()
+                _df_export = preparar_tabla_exportacion(df_filtrado, incluir_total=True)
+                _df_export_detalle = construir_tabla_planes_profesional(df_filtrado)
                 _sufijo = datetime.now().strftime('%Y%m%d')
                 _nombre_base = f"planes_corporativos_{_sufijo}"
 
@@ -2004,10 +2067,10 @@ with tab3:
                             )
                             _pdf.ln(3)
                             _pdf.set_font("Arial", size=9)
-                            for _i, (_idx, _row) in enumerate(_df_export.iterrows(), start=1):
+                            for _idx, _row in _df_export_detalle.iterrows():
                                 try:
                                     _line = _texto_seguro_pdf(
-                                        f"{_i}. {_row.get('numero','')} | {_row.get('nombre_personal','')} | "
+                                        f"{_row.get('item','')}. {_row.get('numero','')} | {_row.get('nombre_personal','')} | "
                                         f"{_row.get('area','')} | {_row.get('departamento','')} | "
                                         f"USD {float(_row.get('valor_usd', 0)):,.2f} | "
                                         f"HNL {float(_row.get('valor_hnl', 0)):,.2f}"
@@ -2019,6 +2082,9 @@ with tab3:
                                     _pdf.ln(1)
                                 except Exception:
                                     pass
+                            _pdf.ln(2)
+                            _pdf.set_font("Arial", "B", 10)
+                            _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL DE LINEAS: {n_filtrados}"), ln=True)
                             try:
                                 _pdf_bytes = _pdf.output()
                             except TypeError:
@@ -2403,9 +2469,11 @@ with tab4:
         st.markdown("### 📤 Exportar Datos")
         if st.session_state.planes:
             df = pd.DataFrame(st.session_state.planes)
+            df_export_full = preparar_tabla_exportacion(df, incluir_total=True)
+            df_export_detalle = construir_tabla_planes_profesional(df)
 
             # Exportar como CSV
-            csv_data = df.to_csv(index=False)
+            csv_data = df_export_full.to_csv(index=False)
             st.download_button(
                 label="📄 Descargar como CSV",
                 data=csv_data,
@@ -2419,7 +2487,7 @@ with tab4:
             excel_buffer = BytesIO()
             try:
                 with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False, sheet_name='Planes')
+                    df_export_full.to_excel(writer, index=False, sheet_name='Planes')
 
                     # Hoja resumen por area y departamento.
                     resumen_area = df.groupby('area', dropna=False)['valor_usd'].sum().reset_index().sort_values('valor_usd', ascending=False)
@@ -2430,7 +2498,7 @@ with tab4:
             except ModuleNotFoundError:
                 try:
                     with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-                        df.to_excel(writer, index=False, sheet_name='Planes')
+                        df_export_full.to_excel(writer, index=False, sheet_name='Planes')
 
                         resumen_area = df.groupby('area', dropna=False)['valor_usd'].sum().reset_index().sort_values('valor_usd', ascending=False)
                         resumen_area.to_excel(writer, index=False, sheet_name='Resumen_Area')
@@ -2470,19 +2538,24 @@ with tab4:
                     pdf.add_page()
                     pdf.set_font("Arial", size=12)
                     pdf.cell(0, 10, _texto_seguro_pdf("Reporte de Planes Corporativos"), ln=True, align='C')
+                    pdf.set_font("Arial", size=10)
+                    pdf.cell(0, 8, _texto_seguro_pdf(f"Total de lineas: {len(df_export_detalle)}"), ln=True, align='C')
                     pdf.cell(0, 10, "", ln=True)
 
-                    for idx, row in df.iterrows():
+                    for _, row in df_export_detalle.iterrows():
                         line = _texto_seguro_pdf(
-                            f"{idx+1}. {row['numero']} | {row['nombre_personal']} | {row['perfil_profesional']} | "
-                            f"{row['area']} | {row['departamento']} | USD {row['valor_usd']:,.2f} | "
-                            f"HNL {row.get('valor_hnl', 0):,.2f} | Tasa {row.get('tasa_usd_hnl', 0):,.2f}"
+                            f"{row.get('item', '')}. {row.get('numero', '')} | {row.get('nombre_personal', '')} | {row.get('perfil_profesional', '')} | "
+                            f"{row.get('area', '')} | {row.get('departamento', '')} | USD {float(row.get('valor_usd', 0)):,.2f} | "
+                            f"HNL {float(row.get('valor_hnl', 0)):,.2f} | Tasa {float(row.get('tasa_usd_hnl', 0)):,.2f}"
                         )
                         pdf.multi_cell(180, 8, line)
                         observ = _texto_seguro_pdf(row.get('observaciones', ''))
                         if observ:
                             pdf.multi_cell(180, 8, f"Observaciones: {observ}")
                         pdf.ln(1)
+
+                    pdf.set_font("Arial", 'B', 10)
+                    pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL DE LINEAS: {len(df_export_detalle)}"), ln=True)
 
                     try:
                         pdf_bytes = pdf.output()
