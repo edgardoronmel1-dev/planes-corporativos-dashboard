@@ -13,6 +13,7 @@ import re
 import time
 import unicodedata
 import hashlib
+import sqlite3
 
 try:
     from fpdf import FPDF
@@ -561,16 +562,233 @@ def _obtener_clave_dispositivo():
     hash_id = hashlib.sha1(fingerprint.encode("utf-8", errors="ignore")).hexdigest()[:16]
     return f"dev_{hash_id}"
 
+
+# ============ PERSISTENCIA SQLITE ============
+SQLITE_STORAGE_FILE = "app_storage.db"
+ESCRIBIR_JSON_COMPAT = False
+
+
+def _abrir_storage_sqlite():
+    conn = sqlite3.connect(SQLITE_STORAGE_FILE, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    return conn
+
+
+def _inicializar_storage_sqlite(conn):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS collection_items (
+            collection_name TEXT NOT NULL,
+            item_index INTEGER NOT NULL,
+            payload TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (collection_name, item_index)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS collection_meta (
+            collection_name TEXT PRIMARY KEY,
+            initialized INTEGER NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dict_items (
+            dict_name TEXT NOT NULL,
+            item_key TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (dict_name, item_key)
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dict_meta (
+            dict_name TEXT PRIMARY KEY,
+            initialized INTEGER NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
+
+def _cargar_json_legacy(path, default_value):
+    if not os.path.exists(path):
+        return default_value
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default_value
+
+
+def _guardar_json_legacy(path, data):
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, default=str, separators=(",", ":"))
+    except Exception:
+        pass
+
+
+def _guardar_lista_sqlite(collection_name, data):
+    data = data if isinstance(data, list) else []
+    marca = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with _abrir_storage_sqlite() as conn:
+            _inicializar_storage_sqlite(conn)
+            conn.execute("DELETE FROM collection_items WHERE collection_name = ?", (collection_name,))
+            if data:
+                conn.executemany(
+                    "INSERT INTO collection_items (collection_name, item_index, payload, updated_at) VALUES (?, ?, ?, ?)",
+                    [
+                        (
+                            collection_name,
+                            idx,
+                            json.dumps(item, ensure_ascii=False, default=str, separators=(",", ":")),
+                            marca,
+                        )
+                        for idx, item in enumerate(data)
+                    ],
+                )
+            conn.execute(
+                "INSERT OR REPLACE INTO collection_meta (collection_name, initialized, updated_at) VALUES (?, 1, ?)",
+                (collection_name, marca),
+            )
+    except Exception:
+        pass
+
+
+def _cargar_lista_sqlite(collection_name):
+    try:
+        with _abrir_storage_sqlite() as conn:
+            _inicializar_storage_sqlite(conn)
+            meta = conn.execute(
+                "SELECT initialized FROM collection_meta WHERE collection_name = ?",
+                (collection_name,),
+            ).fetchone()
+            if not meta:
+                return False, []
+
+            rows = conn.execute(
+                "SELECT payload FROM collection_items WHERE collection_name = ? ORDER BY item_index ASC",
+                (collection_name,),
+            ).fetchall()
+            data = []
+            for row in rows:
+                try:
+                    data.append(json.loads(row[0]))
+                except Exception:
+                    continue
+            return True, data
+    except Exception:
+        return False, []
+
+
+def _guardar_dict_sqlite(dict_name, data):
+    data = data if isinstance(data, dict) else {}
+    marca = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with _abrir_storage_sqlite() as conn:
+            _inicializar_storage_sqlite(conn)
+            conn.execute("DELETE FROM dict_items WHERE dict_name = ?", (dict_name,))
+            if data:
+                conn.executemany(
+                    "INSERT INTO dict_items (dict_name, item_key, payload, updated_at) VALUES (?, ?, ?, ?)",
+                    [
+                        (
+                            dict_name,
+                            str(key),
+                            json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":")),
+                            marca,
+                        )
+                        for key, value in data.items()
+                    ],
+                )
+            conn.execute(
+                "INSERT OR REPLACE INTO dict_meta (dict_name, initialized, updated_at) VALUES (?, 1, ?)",
+                (dict_name, marca),
+            )
+    except Exception:
+        pass
+
+
+def _cargar_dict_sqlite(dict_name):
+    try:
+        with _abrir_storage_sqlite() as conn:
+            _inicializar_storage_sqlite(conn)
+            meta = conn.execute(
+                "SELECT initialized FROM dict_meta WHERE dict_name = ?",
+                (dict_name,),
+            ).fetchone()
+            if not meta:
+                return False, {}
+
+            rows = conn.execute(
+                "SELECT item_key, payload FROM dict_items WHERE dict_name = ? ORDER BY item_key ASC",
+                (dict_name,),
+            ).fetchall()
+            data = {}
+            for row in rows:
+                try:
+                    data[str(row[0])] = json.loads(row[1])
+                except Exception:
+                    continue
+            return True, data
+    except Exception:
+        return False, {}
+
+
+def _cargar_lista_persistente(collection_name, legacy_file):
+    existe_sqlite, data = _cargar_lista_sqlite(collection_name)
+    if existe_sqlite:
+        return data
+
+    legacy_data = _cargar_json_legacy(legacy_file, [])
+    if not isinstance(legacy_data, list):
+        legacy_data = []
+    _guardar_lista_sqlite(collection_name, legacy_data)
+    return legacy_data
+
+
+def _guardar_lista_persistente(collection_name, data, legacy_file=None):
+    _guardar_lista_sqlite(collection_name, data)
+    if ESCRIBIR_JSON_COMPAT and legacy_file:
+        _guardar_json_legacy(legacy_file, data)
+
+
+def _cargar_dict_persistente(dict_name, legacy_file):
+    existe_sqlite, data = _cargar_dict_sqlite(dict_name)
+    if existe_sqlite:
+        return data
+
+    legacy_data = _cargar_json_legacy(legacy_file, {})
+    if not isinstance(legacy_data, dict):
+        legacy_data = {}
+    _guardar_dict_sqlite(dict_name, legacy_data)
+    return legacy_data
+
+
+def _guardar_dict_persistente(dict_name, data, legacy_file=None):
+    _guardar_dict_sqlite(dict_name, data)
+    if ESCRIBIR_JSON_COMPAT and legacy_file:
+        _guardar_json_legacy(legacy_file, data)
+
 # ============ GESTIÓN DE USUARIOS ============
 class GestorUsuarios:
     def __init__(self, archivo="usuarios.json"):
         self.archivo = archivo
+        self.store_name = "usuarios"
         self.usuarios = self.cargar_usuarios()
     
     def cargar_usuarios(self):
-        if os.path.exists(self.archivo):
-            with open(self.archivo, 'r', encoding='utf-8') as f:
-                usuarios = json.load(f)
+        usuarios = _cargar_dict_persistente(self.store_name, self.archivo)
+        if usuarios:
 
             # Normaliza usuarios antiguos que no tienen el permiso explícito.
             for _, data in usuarios.items():
@@ -634,11 +852,10 @@ class GestorUsuarios:
                 }
 
             if not existe_superadmin or not existe_admin:
-                with open(self.archivo, 'w', encoding='utf-8') as f:
-                        json.dump(usuarios, f, ensure_ascii=False, separators=(",", ":"))
+                _guardar_dict_persistente(self.store_name, usuarios, self.archivo)
             return usuarios
 
-        return {
+        usuarios_base = {
             "superadmin": {
                 "contraseña": "super123",
                 "rol": "superadministrador",
@@ -670,10 +887,11 @@ class GestorUsuarios:
                 "preferencias_por_dispositivo": {},
             }
         }
+        _guardar_dict_persistente(self.store_name, usuarios_base, self.archivo)
+        return usuarios_base
     
     def guardar_usuarios(self):
-        with open(self.archivo, 'w', encoding='utf-8') as f:
-            json.dump(self.usuarios, f, ensure_ascii=False, separators=(",", ":"))
+        _guardar_dict_persistente(self.store_name, self.usuarios, self.archivo)
     
     def crear_usuario(self, usuario, contrasena, rol="usuario", email="", puede_editar=True):
         if usuario in self.usuarios:
@@ -771,8 +989,125 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+def aplicar_bloqueo_traduccion_global():
+    """Fuerza el idioma espanol y desactiva traductores automáticos en la interfaz."""
+    st.markdown(
+        """
+        <script>
+            (function() {
+                const aplicar = (doc) => {
+                    if (!doc) return;
+
+                    const html = doc.documentElement;
+                    if (html) {
+                        html.setAttribute('lang', 'es');
+                        html.setAttribute('translate', 'no');
+                        html.classList.add('notranslate');
+                    }
+
+                    if (doc.body) {
+                        doc.body.setAttribute('translate', 'no');
+                        doc.body.classList.add('notranslate');
+                    }
+
+                    let metaGoogle = doc.querySelector('meta[name="google"]');
+                    if (!metaGoogle) {
+                        metaGoogle = doc.createElement('meta');
+                        metaGoogle.setAttribute('name', 'google');
+                        doc.head.appendChild(metaGoogle);
+                    }
+                    metaGoogle.setAttribute('content', 'notranslate');
+
+                    let metaContentLanguage = doc.querySelector('meta[http-equiv="content-language"]');
+                    if (!metaContentLanguage) {
+                        metaContentLanguage = doc.createElement('meta');
+                        metaContentLanguage.setAttribute('http-equiv', 'content-language');
+                        doc.head.appendChild(metaContentLanguage);
+                    }
+                    metaContentLanguage.setAttribute('content', 'es');
+                };
+
+                const estaTraducido = (doc) => {
+                    if (!doc || !doc.documentElement) return false;
+                    const html = doc.documentElement;
+                    const body = doc.body;
+                    const clasesHtml = (html.className || '').toLowerCase();
+                    const clasesBody = body ? (body.className || '').toLowerCase() : '';
+
+                    return (
+                        clasesHtml.includes('translated') ||
+                        clasesBody.includes('translated') ||
+                        !!doc.querySelector('iframe.goog-te-banner-frame') ||
+                        !!doc.querySelector('.goog-te-banner-frame') ||
+                        !!doc.querySelector('.goog-te-combo')
+                    );
+                };
+
+                const mostrarAvisoTraduccion = (doc) => {
+                    if (!doc || !doc.body) return;
+                    const idAviso = 'aviso-traduccion-activa-km';
+                    const traducido = estaTraducido(doc);
+                    let aviso = doc.getElementById(idAviso);
+
+                    if (!traducido) {
+                        if (aviso) aviso.remove();
+                        return;
+                    }
+
+                    if (!aviso) {
+                        aviso = doc.createElement('div');
+                        aviso.id = idAviso;
+                        aviso.setAttribute('translate', 'no');
+                        aviso.className = 'notranslate';
+                        aviso.style.cssText = [
+                            'position:fixed',
+                            'right:12px',
+                            'bottom:12px',
+                            'z-index:2147483647',
+                            'max-width:360px',
+                            'padding:10px 12px',
+                            'border-radius:12px',
+                            'border:1px solid rgba(255,220,120,0.55)',
+                            'background:linear-gradient(180deg, rgba(52,35,10,0.96), rgba(35,22,5,0.96))',
+                            'color:#ffe8b3',
+                            'font:600 13px/1.35 "Segoe UI",sans-serif',
+                            'box-shadow:0 6px 18px rgba(0,0,0,0.35)'
+                        ].join(';');
+                        aviso.textContent = 'Aviso: traduccion del navegador detectada. Desactiva "Traducir pagina" para evitar cambios de botones y textos.';
+                        doc.body.appendChild(aviso);
+                    }
+                };
+
+                const aplicarYVerificar = (doc) => {
+                    aplicar(doc);
+                    mostrarAvisoTraduccion(doc);
+                };
+
+                aplicarYVerificar(document);
+                try { aplicarYVerificar(window.parent.document); } catch (e) {}
+
+                setTimeout(() => { aplicarYVerificar(document); }, 250);
+                setTimeout(() => { try { aplicarYVerificar(window.parent.document); } catch (e) {} }, 600);
+                setInterval(() => {
+                    aplicarYVerificar(document);
+                    try { aplicarYVerificar(window.parent.document); } catch (e) {}
+                }, 2000);
+
+                const observer = new MutationObserver(() => {
+                    aplicarYVerificar(document);
+                    try { aplicarYVerificar(window.parent.document); } catch (e) {}
+                });
+                observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+            })();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
+aplicar_bloqueo_traduccion_global()
+
 # Inicializar gestor de usuarios (cacheado: solo lee usuarios.json una vez por sesion de servidor)
-GESTOR_USUARIOS_CACHE_VERSION = "2026-04-07-prefs-device-v1"
+GESTOR_USUARIOS_CACHE_VERSION = "2026-04-09-sqlite-v1"
 
 @st.cache_resource
 def _crear_gestor_usuarios(_version_key):
@@ -782,15 +1117,13 @@ gestor_usuarios = _crear_gestor_usuarios(GESTOR_USUARIOS_CACHE_VERSION)
 
 # Funciones de persistencia para planes
 PLANES_FILE = "planes.json"
+PLANES_STORE = "planes"
+MOVIMIENTOS_STORE = "movimientos"
+EMPLEADOS_STORE = "empleados"
+RECORDARME_STORE = "recordarme"
 
 def cargar_planes():
-    if os.path.exists(PLANES_FILE):
-        try:
-            with open(PLANES_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+    return _cargar_lista_persistente(PLANES_STORE, PLANES_FILE)
 
 
 MOVIMIENTOS_FILE = "movimientos.json"
@@ -799,57 +1132,42 @@ RECORDARME_FILE = "recordarme.json"
 DEBUG_IMPORT_FILE = "debug_importacion.log"
 
 def cargar_movimientos():
-    if os.path.exists(MOVIMIENTOS_FILE):
-        try:
-            with open(MOVIMIENTOS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+    return _cargar_lista_persistente(MOVIMIENTOS_STORE, MOVIMIENTOS_FILE)
 
 
 def guardar_planes():
     try:
-        with open(PLANES_FILE, 'w', encoding='utf-8') as f:
-            # Guardado compacto: menor I/O y mejor respuesta al guardar en listas grandes.
-            json.dump(st.session_state.planes, f, ensure_ascii=False, default=str, separators=(",", ":"))
+        _guardar_lista_persistente(PLANES_STORE, st.session_state.planes, PLANES_FILE)
     except Exception as e:
         st.error(f"❌ No se pudo guardar planes: {e}")
 
 
+def guardar_movimientos():
+    try:
+        _guardar_lista_persistente(MOVIMIENTOS_STORE, st.session_state.movimientos, MOVIMIENTOS_FILE)
+    except Exception:
+        pass
+
+
 def cargar_empleados():
-    if os.path.exists(EMPLEADOS_FILE):
-        try:
-            with open(EMPLEADOS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            return []
-    return []
+    return _cargar_lista_persistente(EMPLEADOS_STORE, EMPLEADOS_FILE)
 
 
 def guardar_empleados():
     try:
-        with open(EMPLEADOS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(st.session_state.empleados, f, ensure_ascii=False, separators=(",", ":"))
+        _guardar_lista_persistente(EMPLEADOS_STORE, st.session_state.empleados, EMPLEADOS_FILE)
     except Exception as e:
         st.error(f"❌ No se pudo guardar empleados: {e}")
 
 
 def cargar_recordarme():
-    if os.path.exists(RECORDARME_FILE):
-        try:
-            with open(RECORDARME_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            return {}
-    return {}
+    data = _cargar_dict_persistente(RECORDARME_STORE, RECORDARME_FILE)
+    return data if isinstance(data, dict) else {}
 
 
 def guardar_recordarme():
     try:
-        with open(RECORDARME_FILE, 'w', encoding='utf-8') as f:
-            json.dump(st.session_state.credenciales_recordadas, f, ensure_ascii=False, separators=(",", ":"))
+        _guardar_dict_persistente(RECORDARME_STORE, st.session_state.credenciales_recordadas, RECORDARME_FILE)
     except Exception as e:
         st.error(f"❌ No se pudo guardar Recordarme: {e}")
 
@@ -906,12 +1224,7 @@ def registrar_movimiento(tipo, detalle):
         "detalle": detalle
     })
 
-    # también guardar en archivo para persistencia si quieres
-    try:
-        with open(MOVIMIENTOS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(st.session_state.movimientos, f, ensure_ascii=False, separators=(",", ":"))
-    except Exception:
-        pass
+    guardar_movimientos()
 
 
 def tiene_permiso(accion):
@@ -1897,7 +2210,38 @@ if 'recordarme_prefill' not in st.session_state:
 if 'recordarme_feedback' not in st.session_state:
     st.session_state.recordarme_feedback = ""
 if 'recordarme_este_equipo' not in st.session_state:
-    st.session_state.recordarme_este_equipo = True
+    st.session_state.recordarme_este_equipo = any(
+        isinstance(_cred, dict) and str(_cred.get("contrasena", "")).strip()
+        for _cred in st.session_state.credenciales_recordadas.values()
+    )
+if 'recordarme_autocarga_aplicada' not in st.session_state:
+    st.session_state.recordarme_autocarga_aplicada = False
+
+
+def _obtener_credencial_recordada_preferida(usuario_sugerido=""):
+    """Devuelve (usuario, credencial) priorizando coincidencia exacta o la ultima guardada."""
+    credenciales_validas = {
+        str(_usr): _cred
+        for _usr, _cred in st.session_state.credenciales_recordadas.items()
+        if isinstance(_cred, dict) and str(_cred.get("contrasena", "")).strip()
+    }
+    if not credenciales_validas:
+        return None, None
+
+    usuario_buscado = (usuario_sugerido or "").strip()
+    if usuario_buscado:
+        cred = credenciales_validas.get(usuario_buscado)
+        if not cred:
+            for _usr, _cred in credenciales_validas.items():
+                if str(_usr).strip().lower() == usuario_buscado.lower():
+                    return _usr, _cred
+        if cred:
+            return usuario_buscado, cred
+
+    return max(
+        credenciales_validas.items(),
+        key=lambda item: str(item[1].get("guardado_en", "")),
+    )
 
 # ============ SISTEMA DE AUTENTICACIÓN ============
 def pantalla_login():
@@ -1974,6 +2318,22 @@ def pantalla_login():
         )
         st.markdown("---")
 
+        # Al abrir login, intenta cargar credenciales automaticamente una sola vez.
+        if not st.session_state.get("recordarme_autocarga_aplicada", False):
+            if (
+                st.session_state.get("recordarme_este_equipo", True)
+                and not st.session_state.get("login_usuario_input", "").strip()
+                and not st.session_state.get("login_contrasena_input", "").strip()
+            ):
+                _usr_auto, _cred_auto = _obtener_credencial_recordada_preferida()
+                if _usr_auto and _cred_auto:
+                    st.session_state.recordarme_prefill = {
+                        "usuario": _usr_auto,
+                        "contrasena": _cred_auto.get("contrasena", ""),
+                    }
+                    st.session_state.recordarme_feedback = f"Credenciales cargadas para {_usr_auto}"
+            st.session_state.recordarme_autocarga_aplicada = True
+
         # Prefill debe ejecutarse ANTES de crear los widgets de login.
         _prefill = st.session_state.get("recordarme_prefill")
         if isinstance(_prefill, dict):
@@ -1995,29 +2355,20 @@ def pantalla_login():
         )
 
         if st.button("🏍️ Recordarme", width="stretch"):
-            usuario_buscado = (usuario or "").strip()
-            if not usuario_buscado:
-                st.info("Escribe primero tu usuario y luego presiona Recordarme.")
+            usuario_buscado, cred = _obtener_credencial_recordada_preferida(usuario)
+
+            if cred and cred.get("contrasena"):
+                st.session_state.recordarme_prefill = {
+                    "usuario": usuario_buscado,
+                    "contrasena": cred.get("contrasena", ""),
+                }
+                st.session_state.recordarme_feedback = f"Credenciales cargadas para {usuario_buscado}"
+                st.rerun()
             else:
-                cred = st.session_state.credenciales_recordadas.get(usuario_buscado)
-                if not cred:
-                    for _usr, _cred in st.session_state.credenciales_recordadas.items():
-                        if str(_usr).strip().lower() == usuario_buscado.lower():
-                            usuario_buscado = _usr
-                            cred = _cred
-                            break
-                if cred and cred.get("contrasena"):
-                    st.session_state.recordarme_prefill = {
-                        "usuario": usuario_buscado,
-                        "contrasena": cred.get("contrasena", ""),
-                    }
-                    st.session_state.recordarme_feedback = f"Credenciales cargadas para {usuario_buscado}"
-                    st.rerun()
-                else:
-                    st.info(
-                        f"No hay credenciales guardadas para '{usuario_buscado}'. "
-                        "Inicia sesión una vez con ese usuario para habilitar Recordarme."
-                    )
+                st.info(
+                    "No hay credenciales guardadas todavia. "
+                    "Inicia sesion una vez con 'Recordarme este equipo' activado."
+                )
 
         if st.button("🚀 Iniciar Sesión", width="stretch"):
             valido, info = gestor_usuarios.validar_usuario(usuario, contrasena)
@@ -2356,6 +2707,7 @@ else:
             st.session_state.usuario_actual = None
             st.session_state.rol = None
             st.session_state.puede_editar = False
+            st.session_state.recordarme_autocarga_aplicada = False
             st.rerun()
     
     st.markdown(
@@ -2424,10 +2776,10 @@ else:
                 content: "";
             }
 
-            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(1) p::after { content: "📋 Manage Plans"; }
-            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(2) p::after { content: "➕ Add Plan"; }
-            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(3) p::after { content: "👥 Employees"; }
-            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(4) p::after { content: "⚙️ Settings"; }
+            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(1) p::after { content: "📋 Gestionar planes"; }
+            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(2) p::after { content: "➕ Agregar plan"; }
+            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(3) p::after { content: "👥 Empleados"; }
+            .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(4) p::after { content: "⚙️ Configuracion"; }
             .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(5) p::after { content: "📊 Panel de control"; }
 
             .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) {
@@ -2486,10 +2838,10 @@ else:
                     font-size: 14px;
                 }
 
-                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(1) p::after { content: "📋 Plans"; }
-                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(2) p::after { content: "➕ Add"; }
-                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(3) p::after { content: "👥 Team"; }
-                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(4) p::after { content: "⚙️ Setup"; }
+                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(1) p::after { content: "📋 Gestionar"; }
+                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(2) p::after { content: "➕ Agregar"; }
+                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(3) p::after { content: "👥 Empleados"; }
+                .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(4) p::after { content: "⚙️ Config"; }
                 .nav-principal-marker + div[data-testid="stRadio"] label[data-baseweb="radio"]:nth-of-type(5) p::after { content: "📊 Panel de control"; }
             }
         </style>
@@ -2500,10 +2852,10 @@ else:
     # Navegacion principal con renderizado condicional.
     # Evita que Streamlit recalcule todas las secciones en cada rerun.
     _secciones_principales = {
-        "gestionar": "📋 Manage Plans",
-        "agregar": "➕ Add Plan",
-        "empleados": "👥 Employees",
-        "configuracion": "⚙️ Settings",
+        "gestionar": "📋 Gestionar planes",
+        "agregar": "➕ Agregar plan",
+        "empleados": "👥 Empleados",
+        "configuracion": "⚙️ Configuracion",
         "dashboard": "📊 Panel de control",
     }
     if st.session_state.get("vista_principal") not in _secciones_principales:
@@ -2521,12 +2873,12 @@ else:
 
                     radioContainer.classList.add('notranslate');
                     radioContainer.setAttribute('translate', 'no');
-                    radioContainer.setAttribute('lang', 'en');
+                    radioContainer.setAttribute('lang', 'es');
 
                     radioContainer.querySelectorAll('*').forEach((node) => {
                         node.classList.add('notranslate');
                         node.setAttribute('translate', 'no');
-                        node.setAttribute('lang', 'en');
+                        node.setAttribute('lang', 'es');
                     });
                 };
 
@@ -2547,7 +2899,7 @@ else:
         unsafe_allow_html=True,
     )
     vista_actual = st.radio(
-        "Main sections",
+        "Secciones principales",
         options=list(_secciones_principales.keys()),
         format_func=lambda clave: _secciones_principales.get(clave, clave),
         horizontal=True,
