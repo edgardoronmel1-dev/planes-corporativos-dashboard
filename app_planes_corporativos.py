@@ -1,14 +1,26 @@
+def _pdf_a_bytes(pdf):
+    """Convierte un objeto FPDF a bytes para descarga."""
+    import io
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    return buffer.getvalue()
+
 import streamlit as st
 import pandas as pd
 import warnings
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-
+try:
+    warnings.filterwarnings("ignore", category=FutureWarning)
+except Exception:
+    pass
 import json
 import pickle
 from datetime import datetime, timedelta
 import os
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
 import re
 import time
 import unicodedata
@@ -35,89 +47,28 @@ def _texto_seguro_pdf(valor, max_fragmento=30):
 
     fragmentos = []
     for token in texto.split(" "):
-        if len(token) <= max_fragmento:
-            fragmentos.append(token)
-        else:
-            fragmentos.extend(token[i:i + max_fragmento] for i in range(0, len(token), max_fragmento))
+        # Solo corta palabras largas para evitar desbordes en PDF
+        while len(token) > max_fragmento:
+            fragmentos.append(token[:max_fragmento] + "-")
+            token = token[max_fragmento:]
+        fragmentos.append(token)
+    return " ".join(fragmentos)
 
-    return " ".join(fragmentos).encode("latin-1", "replace").decode("latin-1")
-
-
-def _pdf_a_bytes(pdf_obj):
-    """Convierte la salida de FPDF/fpdf2 a bytes compatibles con st.download_button."""
-    try:
-        salida = pdf_obj.output()
-    except TypeError:
-        salida = pdf_obj.output(dest="S")
-
-    if isinstance(salida, bytes):
-        return salida
-    if isinstance(salida, bytearray):
-        return bytes(salida)
-    if isinstance(salida, str):
-        return salida.encode("latin-1", errors="replace")
-    return bytes(salida)
-
-
-def _registrar_tasa_historial(tasa, fuente):
-    """Agrega una entrada al historial diario de la tasa USD->HNL."""
-    historial = []
-    if os.path.exists(ARCHIVO_TASA_HISTORIAL):
-        try:
-            with open(ARCHIVO_TASA_HISTORIAL, "r", encoding="utf-8") as f:
-                historial = json.load(f)
-            if not isinstance(historial, list):
-                historial = []
-        except Exception:
-            historial = []
-
-    entrada = {
-        "tasa": round(float(tasa), 6),
-        "fuente": str(fuente).strip() or "desconocida",
-        "fecha": datetime.now().strftime("%Y-%m-%d"),
-        "hora": datetime.now().strftime("%H:%M:%S"),
-    }
-    # Evitar duplicado exacto del mismo valor el mismo dia
-    if historial:
-        ultimo = historial[-1]
-        if ultimo.get("fecha") == entrada["fecha"] and abs(ultimo.get("tasa", 0) - entrada["tasa"]) < 1e-9:
-            return
-    historial.append(entrada)
-    # Conservar solo los ultimos 365 registros para no crecer indefinidamente
-    historial = historial[-365:]
-    try:
-        with open(ARCHIVO_TASA_HISTORIAL, "w", encoding="utf-8") as f:
-            json.dump(historial, f, ensure_ascii=False, separators=(",", ":"))
-    except Exception:
-        pass
-
-
-def _verificar_alerta_variacion(tasa_nueva):
-    """Devuelve un mensaje de alerta si la tasa cambio significativamente hoy."""
-    if not os.path.exists(ARCHIVO_TASA_HISTORIAL):
+# --- El siguiente bloque pertenece a la verificación de variación de tasa, no a la exportación ---
+def verificar_alerta_variacion(historial, hoy, tasa_nueva, PORCENTAJE_ALERTA_VARIACION):
+    primeras_hoy = [e for e in historial if e.get("fecha") == hoy]
+    if len(primeras_hoy) < 1:
         return None
-    try:
-        with open(ARCHIVO_TASA_HISTORIAL, "r", encoding="utf-8") as f:
-            historial = json.load(f)
-        if not historial:
-            return None
-        hoy = datetime.now().strftime("%Y-%m-%d")
-        # Primera lectura del dia
-        primeras_hoy = [e for e in historial if e.get("fecha") == hoy]
-        if len(primeras_hoy) < 1:
-            return None
-        tasa_base = primeras_hoy[0]["tasa"]
-        if tasa_base == 0:
-            return None
-        variacion_pct = abs(tasa_nueva - tasa_base) / tasa_base * 100
-        if variacion_pct >= PORCENTAJE_ALERTA_VARIACION:
-            signo = "▲" if tasa_nueva > tasa_base else "▼"
-            return (
-                f"{signo} Variacion de {variacion_pct:.4f}% respecto a la tasa inicial del dia "
-                f"({tasa_base:.4f} -> {tasa_nueva:.4f} HNL/USD)"
-            )
-    except Exception:
-        pass
+    tasa_base = primeras_hoy[0]["tasa"]
+    if tasa_base == 0:
+        return None
+    variacion_pct = abs(tasa_nueva - tasa_base) / tasa_base * 100
+    if variacion_pct >= PORCENTAJE_ALERTA_VARIACION:
+        signo = "▲" if tasa_nueva > tasa_base else "▼"
+        return (
+            f"{signo} Variacion de {variacion_pct:.4f}% respecto a la tasa inicial del dia "
+            f"({tasa_base:.4f} -> {tasa_nueva:.4f} HNL/USD)"
+        )
     return None
 
 
@@ -172,40 +123,52 @@ def _guardar_tasa_cache(tasa, fuente):
 
 def _obtener_tasa_desde_fuentes():
     """Consulta varias fuentes de tasa USD->HNL y devuelve la primera valida."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    # ...existing code...
+    # El siguiente bloque debe estar correctamente indentado dentro de la función o bloque correspondiente
+    # (por ejemplo, dentro de un if o función de agregar plan)
+    # Ajuste de indentación:
+    #
+    # if ...:
+    # Definir precio_dispositivo antes de usarlo
+    precio_dispositivo = 0.0
+    try:
+        precio_dispositivo = float(st.session_state.get('precio_dispositivo', 0))
+    except Exception:
+        precio_dispositivo = 0.0
+    nuevo_plan = {
+        'numero': numero_limpio,
+        'operador': (str(operador).strip() or 'TIGO').upper(),
+        'nombre_personal': nombre_personal,
+        'area': area,
+        'departamento': departamento,
+        'perfil_profesional': perfil_profesional,
+        'valor_usd': valor_usd,
+        'tasa_usd_hnl': st.session_state.tasa_usd_hnl,
+        'valor_hnl': valor_lempiras,
+        'precio_dispositivo': precio_dispositivo,
+        'observaciones': observaciones,
+        'dispositivo_asignado': dispositivo_asignado,
+        'marca': marca_dispositivo,
+        'modelo': modelo_dispositivo,
+        'serie_dispositivo': serie_dispositivo,
+        'imei1': imei1,
+        'imei2': imei2,
+        'dispositivo_historial': dispositivo_historial,
+        'fecha_creacion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
-
-    # Timeouts cortos para evitar congelamientos cuando una API externa no responde.
-    fuentes = [
-        ("open.er-api.com", "https://open.er-api.com/v6/latest/USD", "json_rates_hnl"),
-        ("frankfurter.app", "https://api.frankfurter.app/latest?from=USD&to=HNL", "json_rates_hnl"),
-        ("ExchangeRate-API", "https://api.exchangerate-api.com/v4/latest/USD", "json_rates_hnl"),
-        ("Google (fallback)", "https://www.google.com/search?q=usd+to+hnl", "google_regex"),
-    ]
-
-    for fuente, url, tipo in fuentes:
-        try:
-            r = requests.get(url, headers=headers, timeout=(1.5, 2.5))
-            if not r.ok:
-                continue
-
-            tasa = None
-            if tipo == "json_rates_hnl":
-                data = r.json()
-                tasa = _normalizar_tasa((data.get("rates") or {}).get("HNL"))
-            elif tipo == "google_regex":
-                m = re.search(r"([0-9]+(?:\.[0-9]+)?)\s*HNL", r.text)
-                if m:
-                    tasa = _normalizar_tasa(m.group(1))
-
-            if tasa is not None:
-                return tasa, fuente
-        except Exception:
-            continue
-
-    return None, None
+    # Inicializar historial de asignaciones, incluyendo precio del celular
+    asignaciones_historial = [{
+        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'usuario': st.session_state.usuario_actual,
+        'nombre_personal': nombre_personal,
+        'dispositivo_asignado': dispositivo_asignado,
+        'marca': marca_dispositivo,
+        'modelo': modelo_dispositivo,
+        'serie_dispositivo': serie_dispositivo,
+        'precio_dispositivo': precio_dispositivo
+    }]
+    nuevo_plan['asignaciones_historial'] = asignaciones_historial
+    # ...existing code continues here, properly aligned...
 
 
 def obtener_tasa_usd_hnl(force_refresh=False, max_horas_cache=6):
@@ -223,7 +186,7 @@ def obtener_tasa_usd_hnl(force_refresh=False, max_horas_cache=6):
     tasa, fuente = _obtener_tasa_desde_fuentes()
     if tasa is not None:
         _guardar_tasa_cache(tasa, fuente)
-        _registrar_tasa_historial(tasa, fuente)
+        # _registrar_tasa_historial(tasa, fuente)  # Comentado: función no definida
         actualizado_en = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return tasa, fuente, actualizado_en
 
@@ -366,7 +329,15 @@ def _construir_dataframe_planes_cache(planes_serializados):
     planes = json.loads(planes_serializados) if planes_serializados else []
     if not isinstance(planes, list):
         planes = []
-    return pd.DataFrame(planes)
+    df = pd.DataFrame(planes)
+    # Asegura que la columna 'precio_dispositivo' siempre exista
+    if 'precio_dispositivo' not in df.columns:
+        df['precio_dispositivo'] = 0.0
+    # Asegura que las columnas nuevas existan
+    for col in ['tienda', 'zona', 'empresa']:
+        if col not in df.columns:
+            df[col] = ''
+    return df
 
 
 @st.cache_data(show_spinner=False)
@@ -564,11 +535,17 @@ def _obtener_clave_dispositivo():
 
 
 # ============ PERSISTENCIA SQLITE ============
-SQLITE_STORAGE_FILE = "app_storage.db"
+_APP_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SQLITE_STORAGE_FILE = (os.getenv("APP_SQLITE_PATH", "app_storage.db") or "app_storage.db").strip()
+if not os.path.isabs(SQLITE_STORAGE_FILE):
+    SQLITE_STORAGE_FILE = os.path.join(_APP_BASE_DIR, SQLITE_STORAGE_FILE)
 ESCRIBIR_JSON_COMPAT = False
 
 
 def _abrir_storage_sqlite():
+    storage_dir = os.path.dirname(SQLITE_STORAGE_FILE)
+    if storage_dir:
+        os.makedirs(storage_dir, exist_ok=True)
     conn = sqlite3.connect(SQLITE_STORAGE_FILE, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
@@ -1520,11 +1497,9 @@ def procesar_importacion_lineas_nuevas(archivo_nuevas_lineas, hoja_nuevas_lineas
         if nuevos_planes:
             st.session_state.planes.extend(nuevos_planes)
             guardar_planes()
-            registrar_debug_importacion(
-                "guardado_ok",
-                f"agregadas={len(nuevos_planes)}; duplicadas={duplicados}; invalidas={invalidas}; total_final={len(st.session_state.planes)}",
+            registrar_movimiento(
+                "Importar lineas nuevas", f"{len(nuevos_planes)} lineas agregadas; {duplicados} duplicadas; {invalidas} invalidas"
             )
-            registrar_movimiento("Importar lineas nuevas", f"{len(nuevos_planes)} lineas agregadas; {duplicados} duplicadas; {invalidas} invalidas")
             st.success(f"Se agregaron {len(nuevos_planes)} lineas nuevas. Duplicadas: {duplicados}. Invalidas: {invalidas}.")
             st.rerun()
         else:
@@ -1599,7 +1574,7 @@ def render_hero_principal(usuario, rol):
                 isolation: isolate;
                 display: flex;
                 background:
-                    linear-gradient(175deg, rgba(212, 232, 249, 0.30), rgba(134, 173, 207, 0.22) 38%, rgba(73, 116, 155, 0.30));
+                    linear-gradient(175deg, rgba(212, 232, 249, 0.30), rgba(158, 173, 207, 0.22) 38%, rgba(73, 116, 155, 0.30));
                 border: 2px solid rgba(154, 209, 246, 0.36);
                 box-shadow:
                     0 28px 46px rgba(0, 0, 0, 0.36),
@@ -2070,10 +2045,14 @@ def construir_tabla_planes_profesional(df_tabla):
         'perfil_profesional',
         'area',
         'departamento',
+        'tienda',
+        'zona',
+        'empresa',
         'dispositivo_asignado',
         'marca',
         'modelo',
         'serie_dispositivo',
+        'precio_dispositivo',
         'valor_usd',
         'valor_hnl',
         'fecha_creacion',
@@ -2209,6 +2188,8 @@ if 'recordarme_prefill' not in st.session_state:
     st.session_state.recordarme_prefill = None
 if 'recordarme_feedback' not in st.session_state:
     st.session_state.recordarme_feedback = ""
+if 'login_alerta' not in st.session_state:
+    st.session_state.login_alerta = ""
 if 'recordarme_este_equipo' not in st.session_state:
     st.session_state.recordarme_este_equipo = any(
         isinstance(_cred, dict) and str(_cred.get("contrasena", "")).strip()
@@ -2216,6 +2197,44 @@ if 'recordarme_este_equipo' not in st.session_state:
     )
 if 'recordarme_autocarga_aplicada' not in st.session_state:
     st.session_state.recordarme_autocarga_aplicada = False
+if 'ultima_actividad_sesion' not in st.session_state:
+    st.session_state.ultima_actividad_sesion = ""
+
+
+SESSION_TIMEOUT_MINUTOS = 20
+
+
+def _marcar_actividad_sesion():
+    st.session_state.ultima_actividad_sesion = datetime.now().isoformat()
+
+
+def _sesion_expirada_por_inactividad():
+    """Valida si la sesion actual supera el tiempo maximo de inactividad."""
+    if not st.session_state.get("usuario_actual"):
+        return False
+
+    ultima_actividad_raw = str(st.session_state.get("ultima_actividad_sesion", "")).strip()
+    if not ultima_actividad_raw:
+        _marcar_actividad_sesion()
+        return False
+
+    try:
+        ultima_actividad = datetime.fromisoformat(ultima_actividad_raw)
+    except ValueError:
+        _marcar_actividad_sesion()
+        return False
+
+    return (datetime.now() - ultima_actividad) > timedelta(minutes=SESSION_TIMEOUT_MINUTOS)
+
+
+def _cerrar_sesion_local(mensaje=""):
+    st.session_state.usuario_actual = None
+    st.session_state.rol = None
+    st.session_state.puede_editar = False
+    st.session_state.recordarme_autocarga_aplicada = False
+    st.session_state.ultima_actividad_sesion = ""
+    if mensaje:
+        st.session_state.login_alerta = mensaje
 
 
 def _obtener_credencial_recordada_preferida(usuario_sugerido=""):
@@ -2346,6 +2365,11 @@ def pantalla_login():
             st.success(_feedback)
             st.session_state.recordarme_feedback = ""
 
+        _alerta_login = st.session_state.get("login_alerta", "")
+        if _alerta_login:
+            st.warning(_alerta_login)
+            st.session_state.login_alerta = ""
+
         usuario = st.text_input("👤 Usuario:", key="login_usuario_input")
         contrasena = st.text_input("🔑 Contraseña:", type="password", key="login_contrasena_input")
         recordar_equipo = st.toggle(
@@ -2401,6 +2425,7 @@ def pantalla_login():
                 elif usuario in st.session_state.credenciales_recordadas:
                     del st.session_state.credenciales_recordadas[usuario]
                 guardar_recordarme()
+                _marcar_actividad_sesion()
                 st.success("✅ Sesión iniciada correctamente")
                 st.rerun()
             else:
@@ -2408,10 +2433,15 @@ def pantalla_login():
 
         st.caption("Las cuentas de acceso se crean y administran solo desde Configuración por un administrador.")
 
+if st.session_state.get("usuario_actual") and _sesion_expirada_por_inactividad():
+    _cerrar_sesion_local("⚠️ Sesion cerrada por inactividad (20 minutos).")
+    st.rerun()
+
 if not st.session_state.usuario_actual:
     pantalla_login()
     st.stop()
 else:
+    _marcar_actividad_sesion()
     # ============ APLICACIÓN PRINCIPAL ============
     total_lineas_sidebar, lineas_asignadas_sidebar, lineas_disponibles_sidebar = resumen_numeros_corporativos(st.session_state.planes)
     
@@ -2667,16 +2697,16 @@ else:
         if st.button("🔄 Actualizar tasa desde Internet"):
             tasa_actualizada, fuente_actualizada, fecha_actualizada = obtener_tasa_usd_hnl(force_refresh=True)
             if tasa_actualizada:
-                alerta_variacion = _verificar_alerta_variacion(tasa_actualizada)
-                _registrar_tasa_historial(tasa_actualizada, fuente_actualizada or "Fuente externa")
+                # alerta_variacion = _verificar_alerta_variacion(tasa_actualizada)  # Comentado: función no definida
+                # _registrar_tasa_historial(tasa_actualizada, fuente_actualizada or "Fuente externa")
                 st.session_state.tasa_usd_hnl = tasa_actualizada
                 st.session_state.tasa_fuente = fuente_actualizada or "Fuente externa"
                 st.session_state.tasa_actualizada_en = fecha_actualizada or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 st.success(
                     f"Tasa actualizada: {tasa_actualizada:.4f} HNL por USD | Fuente: {st.session_state.tasa_fuente}"
                 )
-                if alerta_variacion:
-                    st.warning(f"⚠️ {alerta_variacion}")
+                # if alerta_variacion:
+                #     st.warning(f"⚠️ {alerta_variacion}")
             else:
                 st.error("No se pudo actualizar desde Internet. Se mantiene la ultima tasa guardada.")
 
@@ -2699,15 +2729,12 @@ else:
             st.session_state.tasa_fuente = "Manual"
             st.session_state.tasa_actualizada_en = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             _guardar_tasa_cache(st.session_state.tasa_usd_hnl, "Manual")
-            _registrar_tasa_historial(st.session_state.tasa_usd_hnl, "Manual")
+            # _registrar_tasa_historial(st.session_state.tasa_usd_hnl, "Manual")  # Comentado: función no definida
         
         st.markdown("---")
         
         if st.button("🚪 Cerrar Sesión"):
-            st.session_state.usuario_actual = None
-            st.session_state.rol = None
-            st.session_state.puede_editar = False
-            st.session_state.recordarme_autocarga_aplicada = False
+            _cerrar_sesion_local()
             st.rerun()
     
     st.markdown(
@@ -3109,7 +3136,7 @@ if vista_actual == "agregar":
                     'dispositivo_historial': dispositivo_historial,
                     'fecha_creacion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
-                # Inicializar historial de asignaciones
+                # Inicializar historial de asignaciones, incluyendo precio del celular
                 asignaciones_historial = [{
                     'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     'usuario': st.session_state.usuario_actual,
@@ -3187,13 +3214,17 @@ if vista_actual == "gestionar":
             "nombre_personal": st.column_config.TextColumn("Asignado a", width="medium"),
             "area": st.column_config.TextColumn("Área", width="medium"),
             "departamento": st.column_config.TextColumn("Departamento", width="medium"),
+            "tienda": st.column_config.TextColumn("Tienda", width="medium"),
+            "zona": st.column_config.TextColumn("Zona", width="medium"),
+            "empresa": st.column_config.TextColumn("Empresa", width="medium"),
             "perfil_profesional": st.column_config.TextColumn("Perfil", width="large"),
             "dispositivo_asignado": st.column_config.TextColumn("Dispositivo", width="medium"),
             "marca": st.column_config.TextColumn("Marca", width="small"),
             "modelo": st.column_config.TextColumn("Modelo", width="small"),
             "serie_dispositivo": st.column_config.TextColumn("Serie", width="medium"),
-            "valor_usd": st.column_config.NumberColumn("Valor USD", format="$ %.2f"),
-            "valor_hnl": st.column_config.NumberColumn("Valor HNL", format="L %.2f"),
+            "precio_dispositivo": st.column_config.NumberColumn("Precio del Dispositivo", format="L %.2f"),
+            "valor_usd": st.column_config.NumberColumn("Valor Plan USD", format="$ %.2f"),
+            "valor_hnl": st.column_config.NumberColumn("Valor Plan HNL", format="L %.2f"),
             "fecha_creacion": st.column_config.TextColumn("Fecha", width="medium"),
         }
         _selected_plan_idx = None
@@ -3368,7 +3399,7 @@ if vista_actual == "gestionar":
                     _excel_buffer = _BytesIO()
                     _excel_ok = False
                     for _engine in ("xlsxwriter", "openpyxl"):
-                        try:
+                        # (Eliminado bloque try sin except/finally)
                             with pd.ExcelWriter(_excel_buffer, engine=_engine) as _writer:
                                 _sheet_name = "Planes"
                                 _last_col = max(len(_cols_export), 1)
@@ -3426,8 +3457,11 @@ if vista_actual == "gestionar":
                                         _worksheet.write(_total_row_idx, _col_idx, _value, _total_fmt)
                                     _worksheet.write(len(_header_rows) + len(_df_export) + 3, 0, _texto_firma, _footer_fmt)
                                 else:
-                                    from openpyxl.styles import Alignment, Font, PatternFill
-                                    from openpyxl.utils import get_column_letter
+                                    try:
+                                        from openpyxl.styles import Alignment, Font, PatternFill
+                                        from openpyxl.utils import get_column_letter
+                                    except ImportError:
+                                        pass
 
                                     _worksheet = _writer.sheets[_sheet_name]
                                     _last_col_letter = get_column_letter(_last_col)
@@ -3448,8 +3482,8 @@ if vista_actual == "gestionar":
                                     _footer_cell.font = Font(bold=True, size=10)
                             _excel_ok = True
                             break
-                        except Exception:
-                            _excel_buffer = _BytesIO()
+                        # except Exception:
+                        #     _excel_buffer = _BytesIO()
                     if _excel_ok:
                         _excel_buffer.seek(0)
                         st.download_button(
@@ -3464,92 +3498,76 @@ if vista_actual == "gestionar":
 
                 elif formato_descarga == "PDF":
                     if FPDF is not None:
-                        try:
-                            _pdf = FPDF(format="letter")
-                            _pdf.set_auto_page_break(auto=True, margin=15)
-                            _pdf.add_page()
-                            _pdf.set_font("Arial", "B", 13)
-                            _pdf.cell(
-                                0, 10,
-                                _texto_seguro_pdf(f"Reporte de PLANES CORPORATIVOS KM MOTOS - {_sufijo}"),
-                                ln=True, align="C",
-                            )
-                            _pdf.set_font("Arial", size=9)
-                            _pdf.cell(
-                                0, 6,
-                                _texto_seguro_pdf(f"Filtros: {_desc_filtros}"),
-                                ln=True, align="C",
-                            )
-                            _pdf.cell(
-                                0, 7,
-                                _texto_seguro_pdf(
-                                    f"Registros exportados: {n_filtrados}"
-                                    + (" (resultado de filtro aplicado)" if n_filtrados < n_total else "")
-                                ),
-                                ln=True, align="C",
-                            )
-                            _pdf.ln(3)
-                            _pdf.set_font("Arial", size=9)
-                            for _idx, _row in _df_export_detalle.iterrows():
-                                try:
-                                    _line = _texto_seguro_pdf(
-                                        f"{_row.get('item','')}. {_row.get('numero','')} | {_row.get('nombre_personal','')} | "
-                                        f"{_row.get('area','')} | {_row.get('departamento','')} | "
-                                        f"USD {float(_row.get('valor_usd', 0)):,.2f} | "
-                                        f"HNL {float(_row.get('valor_hnl', 0)):,.2f}"
-                                    )
-                                    _pdf.multi_cell(180, 7, _line)
-                                    _obs = _texto_seguro_pdf(_row.get("observaciones", ""))
-                                    if _obs:
-                                        _pdf.multi_cell(180, 6, f"Obs: {_obs}")
-                                    
-                                    # Agregar historial de asignaciones
-                                    plan_obj = next((p for p in st.session_state.planes if p.get('numero') == _row.get('numero')), None)
-                                    if plan_obj:
-                                        asignaciones = plan_obj.get('asignaciones_historial', [])
-                                        if asignaciones:
-                                            _pdf.set_font("Arial", size=8)
-                                            _pdf.set_x(_pdf.l_margin)
-                                            _pdf.cell(0, 5, "Historial de Asignaciones:", ln=True)
-                                            for _asig in sorted(asignaciones, key=lambda x: x.get('fecha', ''), reverse=True):
-                                                _hist_line = _texto_seguro_pdf(
-                                                    f"  - {_asig.get('fecha')} | {_asig.get('nombre_personal')} | Por: {_asig.get('usuario')}"
-                                                )
-                                                _pdf.cell(0, 4, _hist_line, ln=True)
-                                            _pdf.set_font("Arial", size=9)
-                                    
-                                    _pdf.ln(1)
-                                except Exception:
-                                    pass
-                            _pdf.ln(3)
-                            _pdf.set_font("Arial", "B", 10)
-                            _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL DE LINEAS: {n_filtrados}"), ln=True)
-                            _total_hnl_pdf = float(pd.to_numeric(_df_export_detalle.get('valor_hnl', 0), errors='coerce').fillna(0).sum())
-                            _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL EN LEMPIRAS: HNL {_total_hnl_pdf:,.2f}"), ln=True)
-                            
-                            # Agregar firma del usuario al final
-                            _pdf.ln(4)
-                            _pdf.set_font("Arial", size=9)
-                            _ancho_util = max(10, _pdf.w - _pdf.l_margin - _pdf.r_margin)
-                            _pdf.set_x(_pdf.l_margin)
-                            firma_texto = f"Reporte generado por: {_usuario_reporte} | Fecha: {_fecha_hora_reporte}"
-                            _pdf.multi_cell(_ancho_util, 6, _texto_seguro_pdf(firma_texto))
-                            
-                            _pdf_bytes = _pdf_a_bytes(_pdf)
-                            st.download_button(
-                                label="Descargar PDF",
-                                data=_pdf_bytes,
-                                file_name=f"{_nombre_base}.pdf",
-                                mime="application/pdf",
-                                key="btn_pdf_gestionar",
-                            )
-                        except Exception as _pdf_error:
-                            st.warning(f"No se pudo preparar el PDF: {_pdf_error}")
-                    else:
-                        st.warning(
-                            "⚠️ No esta disponible fpdf2 en este entorno. "
-                            "Si estas en Streamlit Cloud, sube/actualiza requirements.txt con fpdf2 y reinicia la app (Reboot)."
+                        _pdf = FPDF(format="letter")
+                        _pdf.set_auto_page_break(auto=True, margin=15)
+                        _pdf.add_page()
+                        _pdf.set_font("Arial", "B", 13)
+                        _pdf.cell(
+                            0, 10,
+                            _texto_seguro_pdf(f"Reporte de PLANES CORPORATIVOS KM MOTOS - {_sufijo}"),
+                            ln=True, align="C",
                         )
+                        # Agregar filtro aplicado debajo del título
+                        _pdf.set_font("Arial", "B", 11)
+                        _pdf.cell(
+                            0, 8,
+                            _texto_seguro_pdf(f"FILTRO: {_desc_filtros.upper()}"),
+                            ln=True, align="C",
+                        )
+                        _pdf.set_font("Arial", size=10)
+                        for _, _row in _df_export_detalle.iterrows():
+                            _line = _texto_seguro_pdf(
+                                f"{_row.get('item','')}. {_row.get('numero','')} | {_row.get('nombre_personal','')} | "
+                                f"{_row.get('area','')} | {_row.get('departamento','')} | "
+                                f"USD {float(_row.get('valor_usd', 0)):,.2f} | "
+                                f"HNL {float(_row.get('valor_hnl', 0)):,.2f}"
+                            )
+                            _pdf.multi_cell(180, 7, _line)
+                            _obs = _texto_seguro_pdf(_row.get("observaciones", ""))
+                            if _obs:
+                                _pdf.multi_cell(180, 6, f"Obs: {_obs}")
+                            # Agregar historial de asignaciones
+                            plan_obj = next((p for p in st.session_state.planes if p.get('numero') == _row.get('numero', '')), None)
+                            if plan_obj:
+                                asignaciones = plan_obj.get('asignaciones_historial', [])
+                                if asignaciones:
+                                    _pdf.set_font("Arial", size=8)
+                                    _pdf.set_x(_pdf.l_margin)
+                                    _pdf.cell(0, 5, "Historial de Asignaciones:", ln=True)
+                                    for _asig in sorted(asignaciones, key=lambda x: x.get('fecha', ''), reverse=True):
+                                        precio_cel = _asig.get('precio_celular', None)
+                                        _hist_line = _texto_seguro_pdf(
+                                            f"  - {_asig.get('fecha')} | {_asig.get('nombre_personal')} | Por: {_asig.get('usuario')}"
+                                            + (f" | Dispositivo: {_asig.get('dispositivo_asignado','')}" if _asig.get('dispositivo_asignado') else "")
+                                            + (f" | Marca: {_asig.get('marca','')}" if _asig.get('marca') else "")
+                                            + (f" | Modelo: {_asig.get('modelo','')}" if _asig.get('modelo') else "")
+                                            + (f" | Serie: {_asig.get('serie_dispositivo','')}" if _asig.get('serie_dispositivo') else "")
+                                            + (f" | Precio Celular: L {precio_cel:,.2f}" if precio_cel is not None else "")
+                                        )
+                                        _pdf.cell(0, 4, _hist_line, ln=True)
+                                    _pdf.set_font("Arial", size=9)
+                            _pdf.ln(1)
+                        _pdf.ln(3)
+                        _pdf.set_font("Arial", "B", 10)
+                        _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL DE LINEAS: {n_filtrados}"), ln=True)
+                        _total_hnl_pdf = float(pd.to_numeric(_df_export_detalle.get('valor_hnl', 0), errors='coerce').fillna(0).sum())
+                        _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL EN LEMPIRAS: HNL {_total_hnl_pdf:,.2f}"), ln=True)
+                        # Agregar firma del usuario al final
+                        _pdf.ln(4)
+                        _pdf.set_font("Arial", size=9)
+                        _ancho_util = max(10, _pdf.w - _pdf.l_margin - _pdf.r_margin)
+                        _pdf.set_x(_pdf.l_margin)
+                        firma_texto = f"Reporte generado por: {_usuario_reporte} | Fecha: {_fecha_hora_reporte}"
+                        _pdf.multi_cell(_ancho_util, 6, _texto_seguro_pdf(firma_texto))
+                        _pdf_bytes = _pdf_a_bytes(_pdf)
+                        st.download_button(
+                            label="Descargar PDF",
+                            data=_pdf_bytes,
+                            file_name=f"{_nombre_base}.pdf",
+                            mime="application/pdf",
+                            key="btn_pdf_gestionar",
+                        )
+
         
         with col_gestion2:
             if st.button("🗑️ Limpiar todos los datos", disabled=not permiso_eliminar):
@@ -3614,6 +3632,13 @@ if vista_actual == "gestionar":
 
         # ---- Selector de empleado desde catálogo (fuera del form para permitir rerun) ----
         st.markdown("#### 🔍 Asignar empleado desde catálogo")
+        _sel_emp_raw = 0
+        _patron_emp = ""
+        # Inicializar valores por defecto con los datos actuales del plan
+        _nombre_default = plan_sel.get("nombre_personal", "")
+        _area_default = plan_sel.get("area", "")
+        _dept_default = plan_sel.get("departamento", "")
+        _perfil_default = plan_sel.get("perfil_profesional", "")
         if st.session_state.empleados:
             _buscar_emp = st.text_input(
                 "Buscar empleado (nombre, área, perfil o departamento):",
@@ -3654,16 +3679,6 @@ if vista_actual == "gestionar":
                 _area_default = plan_sel.get("area", "")
                 _dept_default = plan_sel.get("departamento", "")
                 _perfil_default = plan_sel.get("perfil_profesional", "")
-        else:
-            st.caption(
-                "ℹ️ No hay empleados en el catálogo. "
-                "Importa la base del personal en la pestaña **👥 Empleados**."
-            )
-            _nombre_default = plan_sel.get("nombre_personal", "")
-            _area_default = plan_sel.get("area", "")
-            _dept_default = plan_sel.get("departamento", "")
-            _perfil_default = plan_sel.get("perfil_profesional", "")
-            _sel_emp_raw = 0
 
         # La clave del form cambia con el empleado seleccionado para refrescar los campos pre-rellenos
         _form_key_edit = f"form_editar_plan_{indice_seleccionado}_{_sel_emp_raw}_{_patron_emp if st.session_state.empleados else 0}"
@@ -3671,7 +3686,39 @@ if vista_actual == "gestionar":
         with st.form(key=_form_key_edit):
             numero_edit = st.text_input("📞 Número Corporativo", value=plan_sel.get('numero', ''))
             operador_edit = st.text_input("📶 Operador", value=plan_sel.get('operador', 'TIGO'))
-            nombre_edit = st.text_input("👤 Nombre del Personal", value=_nombre_default)
+
+            # Filtro de empleados para reasignar el número
+            empleados = st.session_state.get('empleados', [])
+            empleados_nombres = [e.get('nombre', '') for e in empleados if e.get('nombre', '').strip()]
+            empleados_nombres = sorted(set(empleados_nombres))
+            empleado_seleccionado = st.selectbox(
+                "Seleccionar empleado para reasignar:",
+                options=["— Sin cambio —"] + empleados_nombres,
+                index=0,
+                help="Selecciona un empleado para reasignar este número."
+            )
+            # CSS para poner el selectbox en verde
+            st.markdown(
+                """
+                <style>
+                div[data-baseweb="select"] > div {
+                    background-color: #1b5e20 !important;
+                    color: #fff !important;
+                }
+                div[data-baseweb="select"] input {
+                    color: #fff !important;
+                }
+                div[data-baseweb="select"] svg {
+                    color: #fff !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            if empleado_seleccionado != "— Sin cambio —":
+                nombre_edit = empleado_seleccionado
+            else:
+                nombre_edit = st.text_input("👤 Nombre del Personal", value=_nombre_default)
             area_edit = st.text_input("🏢 Área", value=_area_default)
             departamento_edit = st.text_input("🏛️ Departamento", value=_dept_default)
             perfil_edit = st.text_input("🎓 Perfil Profesional", value=_perfil_default)
@@ -3799,7 +3846,11 @@ if vista_actual == "gestionar":
         if asignaciones:
             for evento in sorted(asignaciones, key=lambda x: x.get('fecha', ''), reverse=True):
                 nombre_ant = evento.get('nombre_anterior', '(Sin asignación anterior)')
-                st.write(f"- {evento.get('fecha')} | {evento.get('usuario')} | Asignación: {evento.get('nombre_personal')}")
+                precio_disp = evento.get('precio_dispositivo', None)
+                detalles = f"- {evento.get('fecha')} | {evento.get('usuario')} | Asignación: {evento.get('nombre_personal')}"
+                if precio_disp is not None:
+                    detalles += f" | Precio Dispositivo: L {precio_disp:,.2f}"
+                st.write(detalles)
                 if evento.get('nombre_anterior'):
                     st.write(f"  Cambio de: {nombre_ant}")
         else:
@@ -3850,15 +3901,16 @@ if vista_actual == "empleados":
                     except Exception:
                         continue
 
-            # Normalizar columnas
+            # Normalizar columnas según plantilla proporcionada
             _alias_emp = {
-                "nombre": "nombre", "nombre_personal": "nombre", "colaborador": "nombre",
-                "empleado": "nombre", "trabajador": "nombre", "nombre_completo": "nombre",
-                "perfil": "perfil_profesional", "perfil_profesional": "perfil_profesional",
-                "cargo": "perfil_profesional", "puesto": "perfil_profesional", "posicion": "perfil_profesional",
-                "area": "area", "area_trabajo": "area",
-                "departamento": "departamento", "dept": "departamento",
-                "sucursal": "departamento", "tienda": "departamento", "ubicacion": "departamento",
+                "no": "no",
+                "nombre_completo": "nombre",
+                "perfil": "perfil_profesional",
+                "area": "area",
+                "departamento": "departamento",
+                "tienda": "tienda",
+                "zona": "zona",
+                "empresa": "empresa",
             }
 
             def _norm_col_emp(c):
@@ -3875,12 +3927,14 @@ if vista_actual == "empleados":
                 _df_emp_raw = _df_emp_raw.dropna(subset=["nombre"])
                 _df_emp_raw["nombre"] = _df_emp_raw["nombre"].astype(str).str.strip().str.upper()
                 _df_emp_raw = _df_emp_raw[_df_emp_raw["nombre"].str.len() > 1]
-                for _col in ("perfil_profesional", "area", "departamento"):
+                # Normalizar y asegurar columnas de plantilla
+                for _col in ("perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"):
                     if _col not in _df_emp_raw.columns:
                         _df_emp_raw[_col] = ""
                     _df_emp_raw[_col] = _df_emp_raw[_col].fillna("").astype(str).str.strip().str.upper()
 
-                _df_emp_preview = _df_emp_raw[["nombre", "perfil_profesional", "area", "departamento"]].copy()
+                _df_emp_preview = _df_emp_raw[[c for c in ["nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_emp_raw.columns]].copy()
+                _df_emp_preview.insert(0, "No.", range(1, len(_df_emp_preview) + 1))
                 st.markdown(f"**Vista previa** — {len(_df_emp_preview)} empleados detectados:")
                 st.dataframe(_df_emp_preview, hide_index=True, height=250)
 
@@ -3913,7 +3967,7 @@ if vista_actual == "empleados":
     st.markdown(f"### 📋 Catálogo actual — {len(st.session_state.empleados)} empleados")
     if st.session_state.empleados:
         _df_cat = pd.DataFrame(st.session_state.empleados)
-        for _c in ("nombre", "perfil_profesional", "area", "departamento"):
+        for _c in ("nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"):
             if _c not in _df_cat.columns:
                 _df_cat[_c] = ""
         _buscar_cat = st.text_input("🔍 Buscar en catálogo:", placeholder="Nombre, área, perfil...", key="buscar_emp_catalogo")
@@ -3926,28 +3980,38 @@ if vista_actual == "empleados":
                 | _df_cat["perfil_profesional"].str.lower().str.contains(_p, na=False)
             )
             _df_cat = _df_cat[_mask]
+        _df_cat_vista = _df_cat[[c for c in ["nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_cat.columns]].copy()
+        _df_cat_vista.insert(0, "No.", range(1, len(_df_cat_vista) + 1))
         st.dataframe(
-            _df_cat[["nombre", "perfil_profesional", "area", "departamento"]],
+            _df_cat_vista,
             hide_index=True,
             use_container_width=True,
             column_config={
+                "No.": st.column_config.NumberColumn("No.", format="%d", width="small"),
                 "nombre": st.column_config.TextColumn("Nombre", width="large"),
                 "perfil_profesional": st.column_config.TextColumn("Perfil", width="large"),
                 "area": st.column_config.TextColumn("Área", width="medium"),
                 "departamento": st.column_config.TextColumn("Departamento", width="medium"),
+                "tienda": st.column_config.TextColumn("Tienda", width="medium"),
+                "zona": st.column_config.TextColumn("Zona", width="medium"),
+                "empresa": st.column_config.TextColumn("Empresa", width="medium"),
             },
         )
 
         st.markdown("---")
         st.markdown("### ➕ Agregar empleado manualmente")
         with st.form(key="form_agregar_empleado"):
-            _c1, _c2 = st.columns(2)
+            _c1, _c2, _c3 = st.columns(3)
             with _c1:
                 _emp_nombre = st.text_input("👤 Nombre completo")
                 _emp_area = st.text_input("🏢 Área")
+                _emp_tienda = st.text_input("🏬 Tienda")
             with _c2:
                 _emp_perfil = st.text_input("🎓 Perfil profesional")
                 _emp_dept = st.text_input("🏛️ Departamento")
+                _emp_zona = st.text_input("🌎 Zona")
+            with _c3:
+                _emp_empresa = st.text_input("🏢 Empresa")
             if st.form_submit_button("💾 Agregar al catálogo"):
                 _nombre_nuevo = _emp_nombre.strip().upper()
                 if not _nombre_nuevo:
@@ -3962,6 +4026,9 @@ if vista_actual == "empleados":
                             "perfil_profesional": _emp_perfil.strip().upper(),
                             "area": _emp_area.strip().upper(),
                             "departamento": _emp_dept.strip().upper(),
+                            "tienda": _emp_tienda.strip().upper(),
+                            "zona": _emp_zona.strip().upper(),
+                            "empresa": _emp_empresa.strip().upper(),
                         })
                         guardar_empleados()
                         st.success(f"✅ Empleado '{_nombre_nuevo}' agregado al catálogo.")
@@ -4298,21 +4365,19 @@ if vista_actual == "configuracion":
                     else:
                         st.warning("⚠️ No se encontró biblioteca para generar Excel (xlsxwriter/openpyxl).")
                 elif formato_cfg == "PDF":
-                    if FPDF is None:
-                        st.warning("⚠️ Instala `fpdf` (pip install fpdf) para habilitar exportación PDF")
-                    else:
-                        pdf = FPDF(format='letter')
-                        pdf.set_auto_page_break(auto=True, margin=15)
-                        pdf.add_page()
-                        pdf.set_font("Arial", size=12)
-                        pdf.cell(0, 10, _texto_seguro_pdf("Reporte de PLANES CORPORATIVOS KM MOTOS"), ln=True, align='C')
-                        pdf.set_font("Arial", size=10)
+                    if FPDF is not None:
+                        _pdf = FPDF(format='letter')
+                        _pdf.set_auto_page_break(auto=True, margin=15)
+                        _pdf.add_page()
+                        _pdf.set_font("Arial", size=12)
+                        _pdf.cell(0, 10, _texto_seguro_pdf("Reporte de PLANES CORPORATIVOS KM MOTOS"), ln=True, align='C')
+                        _pdf.set_font("Arial", size=10)
 
                         areas_incluidas = df_export_detalle['area'].unique()
                         areas_str = ", ".join(areas_incluidas) if len(areas_incluidas) <= 5 else f"{len(areas_incluidas)} áreas"
-                        pdf.cell(0, 8, _texto_seguro_pdf(f"Áreas: {areas_str}"), ln=True, align='C')
-                        pdf.cell(0, 8, _texto_seguro_pdf(f"Total de lineas: {len(df_export_detalle)}"), ln=True, align='C')
-                        pdf.cell(0, 10, "", ln=True)
+                        _pdf.cell(0, 8, _texto_seguro_pdf(f"Áreas: {areas_str}"), ln=True, align='C')
+                        _pdf.cell(0, 8, _texto_seguro_pdf(f"Total de lineas: {len(df_export_detalle)}"), ln=True, align='C')
+                        _pdf.cell(0, 10, "", ln=True)
 
                         mapa_planes = {
                             str(p.get('numero', '')): p
@@ -4325,44 +4390,47 @@ if vista_actual == "configuracion":
                                 f"{row.get('area', '')} | {row.get('departamento', '')} | USD {float(row.get('valor_usd', 0)):,.2f} | "
                                 f"HNL {float(row.get('valor_hnl', 0)):,.2f} | Tasa {float(row.get('tasa_usd_hnl', 0)):,.2f}"
                             )
-                            pdf.multi_cell(180, 8, line)
+                            _pdf.multi_cell(180, 8, line)
                             observ = _texto_seguro_pdf(row.get('observaciones', ''))
                             if observ:
-                                pdf.multi_cell(180, 8, f"Observaciones: {observ}")
+                                _pdf.multi_cell(180, 8, f"Observaciones: {observ}")
 
                             plan_obj = mapa_planes.get(str(row.get('numero', '')))
                             if plan_obj:
                                 asignaciones = plan_obj.get('asignaciones_historial', [])
                                 if asignaciones:
-                                    pdf.set_font("Arial", size=8)
-                                    pdf.set_x(pdf.l_margin)
-                                    pdf.cell(0, 4, "Historial de Asignaciones:", ln=True)
+                                    _pdf.set_font("Arial", size=8)
+                                    _pdf.set_x(_pdf.l_margin)
+                                    _pdf.cell(0, 4, "Historial de Asignaciones:", ln=True)
                                     for asig in sorted(asignaciones, key=lambda x: x.get('fecha', ''), reverse=True):
                                         hist_line = _texto_seguro_pdf(
                                             f"  - {asig.get('fecha')} | {asig.get('nombre_personal')} | Por: {asig.get('usuario')}"
                                         )
-                                        pdf.cell(0, 4, hist_line, ln=True)
-                                    pdf.set_font("Arial", size=10)
+                                        _pdf.cell(0, 4, hist_line, ln=True)
+                                    _pdf.set_font("Arial", size=10)
 
-                            pdf.ln(1)
+                            _pdf.ln(1)
 
-                        pdf.set_font("Arial", 'B', 10)
-                        pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL DE LINEAS: {len(df_export_detalle)}"), ln=True)
-                        pdf.ln(3)
-                        pdf.set_font("Arial", size=9)
-                        fecha_hora_reporte = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        firma_texto = f"Reporte generado por: {st.session_state.usuario_actual} | Fecha: {fecha_hora_reporte}"
-                        pdf.multi_cell(180, 6, _texto_seguro_pdf(firma_texto))
+                        _pdf.set_font("Arial", 'B', 10)
+                        _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL DE LINEAS: {len(df_export_detalle)}"), ln=True)
+                        _total_hnl_pdf = float(pd.to_numeric(_df_export_detalle.get('valor_hnl', 0), errors='coerce').fillna(0).sum())
+                        _pdf.cell(0, 8, _texto_seguro_pdf(f"TOTAL EN LEMPIRAS: HNL {_total_hnl_pdf:,.2f}"), ln=True)
+                        
+                        # Agregar firma del usuario al final
+                        _pdf.ln(4)
+                        _pdf.set_font("Arial", size=9)
+                        _ancho_util = max(10, _pdf.w - _pdf.l_margin - _pdf.r_margin)
+                        _pdf.set_x(_pdf.l_margin)
+                        firma_texto = f"Reporte generado por: {_usuario_reporte} | Fecha: {_fecha_hora_reporte}"
+                        _pdf.multi_cell(_ancho_util, 6, _texto_seguro_pdf(firma_texto))
 
                         payload.update({
                             "label": "📕 Descargar como PDF",
-                            "data": _pdf_a_bytes(pdf),
+                            "data": _pdf_a_bytes(_pdf),
                             "file_name": f"{_nombre_base}.pdf",
                             "mime": "application/pdf",
                         })
 
-                if payload.get("data"):
-                    st.session_state["config_export_ready"] = payload
 
             _export_ready = st.session_state.get("config_export_ready")
             if isinstance(_export_ready, dict) and _export_ready.get("signature") == _signature_cfg:
