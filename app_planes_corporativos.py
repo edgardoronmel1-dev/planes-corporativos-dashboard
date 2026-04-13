@@ -1,113 +1,241 @@
+def generar_responsiva_completa_pdf(
+    empleado,
+    departamento,
+    dispositivo,
+    marca,
+    imei,
+    modelo,
+    plan,
+    serie,
+    area,
+    estado,
+    cargador,
+    funcionalidad,
+    numero_corporativo,
+    valor_equipo,
+    ciudad,
+    fecha,
+    logo_path
+):
+    """Genera un PDF de responsiva de equipo de trabajo (3 páginas) con logo y textos fijos."""
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    # --- PAGINA 1: RESPONSIVA ---
+    pdf.add_page()
+    # if logo_path:
+    #     pdf.image(logo_path, x=10, y=8, w=28)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 18, '', ln=True)
+    pdf.cell(0, 8, "ASIGNACIÓN DE EQUIPO DE TRABAJO", ln=True, align='C')
+    pdf.ln(6)
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 8, f"Yo ____________________________, con tarjeta de identidad número ____________________________, del departamento de {departamento},\nestoy recibiendo por parte de MOTOS (OPERACIONES), el siguiente equipo de trabajo con las siguientes características:")
+    pdf.ln(2)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"Dispositivo: {dispositivo}", ln=True)
+    pdf.cell(0, 7, f"Marca: {marca}", ln=True)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 7, f"Imei: {imei}", ln=True)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"Modelo: {modelo}    Plan: {plan}", ln=True)
+    pdf.cell(0, 7, f"Serie: {serie}    Área: {area} / Departamento: {departamento}", ln=True)
+    pdf.cell(0, 7, f"Estado: {estado}    Cargador: {cargador}", ln=True)
+    pdf.cell(0, 7, f"Funcionalidad: {funcionalidad}    Número corporativo: {numero_corporativo}", ln=True)
+    pdf.ln(2)
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 7, "El cual recibo en perfectas condiciones, y el cual queda bajo mi responsabilidad, comprometiéndome al uso adecuado del mismo, y a entregarlo al retirarme de la empresa. De comprobarse que por negligencia o mal manejo lo dañara, autorizo a la empresa la deducción respectiva del monto correspondiente.")
+    pdf.ln(4)
+    pdf.cell(0, 7, f"En la ciudad de {ciudad}, a los ___ días de ________ del {fecha}", ln=True)
+    pdf.ln(10)
+    pdf.cell(80, 7, "_________________________", ln=0, align='C')
+    pdf.cell(30, 7, "", ln=0)
+    pdf.cell(80, 7, "_________________________", ln=1, align='C')
+    pdf.cell(80, 7, "Responsable", ln=0, align='C')
+    pdf.cell(30, 7, "", ln=0)
+    pdf.cell(80, 7, "Coordinador Lty Seguridad", ln=1, align='C')
+    pdf.ln(6)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"VALOR DE EQUIPO: L{valor_equipo:,.2f}", ln=True)
+
+    # --- PAGINA 2: POLITICAS DE USO ---
+    pdf.add_page()
+    # if logo_path:
+    #     pdf.image(logo_path, x=10, y=8, w=28)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 18, '', ln=True)
+    pdf.cell(0, 8, "POLÍTICAS DE USO", ln=True, align='C')
+    pdf.ln(4)
+    pdf.set_font("Arial", size=10)
+    politicas = (
+        "¿Cómo usar el dispositivo móvil propiedad de la compañía?\n"
+        "El teléfono móvil propiedad de la empresa KM MOTOS debe usarse solo para fines oficiales. Se permite el uso raro y muy limitado del teléfono móvil para uso personal, sin embargo, todo daño o mal funcionamiento será como propiedad del uso del móvil como una gran herramienta de comunicación para lograr tener una atención al cliente de primera y profesional así logrando mejores resultados de forma general.\n\n"
+        "El teléfono móvil propiedad de la empresa debe ser utilizado solo por el empleado elegido. No puede ser utilizado por ningún familiar o amigo del empleado. No puede ser utilizado por ningún miembro de la familia. El dispositivo móvil propiedad de la empresa debe utilizarse cumpliendo con la política. La empresa se reserva el derecho de proceder a retiro si se sospecha que no se está cumpliendo con la política.\n\n"
+        "El empleado que lleva el teléfono móvil propiedad de la compañía debe asegurarse de que esté en uso y que no se pierda la línea o señal.\n"
+        "No se permiten llamadas internacionales ni suscripciones a ningún tipo de promociones que generen costos extras o en la factura de la empresa.\n"
+        "No se permiten juegos o usar el plan para entretenimiento/distracciones.\n\n"
+        "Para uso personal\n"
+        "Para cualquier actividad comercial; Cualquier indicio de que el empleado está haciendo mal uso del teléfono móvil será causa de una sanción disciplinaria obligatoria.\n"
+        "Enviar cualquier material indebido por chat.\n"
+        "Cualquier material relacionado con actividades ilícitas.\n"
+        "Evitar cualquier mal uso del dispositivo móvil de otros.\n\n"
+        "SEGURIDAD Y PROTECCIÓN:\n"
+        "El empleado debe asegurarse de que el teléfono móvil de la empresa esté protegido todo el tiempo. Debe protegerlo con la ayuda de una contraseña.\n"
+        "Es responsabilidad del empleado proteger el teléfono móvil de cualquier tipo de daño, etc. No debe dejarse en ningún lugar sin supervisión.\n"
+        "En caso de daño, el personal de mesa asignada, acudirá al personal encargado responsable del daño del teléfono móvil.\n"
+        "La información confidencial y personal no debe almacenarse en el teléfono móvil.\n"
+    )
+    pdf.multi_cell(0, 6, politicas)
+
+    # --- PAGINA 3: OBJETIVOS ---
+    pdf.add_page()
+    # if logo_path:
+    #     pdf.image(logo_path, x=10, y=8, w=28)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 18, '', ln=True)
+    pdf.cell(0, 8, "OBJETIVOS", ln=True, align='C')
+    pdf.ln(4)
+    pdf.set_font("Arial", size=10)
+    objetivos = (
+        "- MEJORAR COMUNICACIÓN GENERAL EN LA EMPRESA\n"
+        "- ATENCIÓN AL CLIENTE DE PRIMERA Y DE FORMA INMEDIATA\n"
+        "- COMUNICAR CARTERA DE CLIENTES HEREDADAS\n"
+        "- AGENDAR NUEVOS CLIENTES\n"
+        "- BRINDAR COTIZACIONES Y GESTIONAR VENTAS DE FORMA EFICAZ Y RÁPIDA\n"
+        "- AUMENTAR VENTAS EN NUESTRA TIENDA Y EMPRESA\n"
+        "- MEJORAR IMAGEN PROFESIONAL DE COMUNICACIÓN\n"
+        "- USO DE APLICACIONES QUE UTILIZAMOS EN LA EMPRESA COMO CANALES DE VENTA, COMUNICACIÓN Y APOYO\n"
+        "- ENVIAR PROMOCIONES Y DIFUSIÓN FRECUENTE\n"
+        "- LLAMAR A PROVEEDORES PARA GESTIÓN RÁPIDA DE VENTAS POR ENCARGO A CLIENTE DETALLE\n"
+        "- ACCESO A SISTEMA PARA PRECIOS/VENTAS/COTIZACIONES\n"
+        "- ACCESO A PAGINA WEB/FACEBOOK/SISTEMA/WHATSAPP Y CORREO DE NUESTRA TIENDA Y EMPRESA KM MOTOS\n"
+        "- MAYOR ALCANCE GENERAL\n"
+        "- FACILITAR ACCESOS PARA USO CORRECTO EN LA EMPRESA\n"
+        "- MEJORAR NÚMEROS DE VENTAS PERSONALES Y SOBREPASAR METAS DE FORMA CONSTANTE\n"
+    )
+    pdf.multi_cell(0, 6, objetivos)
+
+    import io
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    return buffer.getvalue()
+def generar_responsiva_pdf(
+    empleado,
+    identidad,
+    departamento,
+    dispositivo,
+    marca,
+    imei,
+    modelo,
+    plan,
+    serie,
+    area,
+    estado,
+    cargador,
+    funcionalidad,
+    numero_corporativo,
+    valor_equipo,
+    ciudad,
+    fecha,
+    responsable,
+    coordinador,
+    logo_path=None
+):
+    """Genera un PDF de responsiva de equipo de trabajo con los datos proporcionados."""
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    # Logo
+    # if logo_path:
+    #     pdf.image(logo_path, x=10, y=8, w=28)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 18, '', ln=True)  # Espacio tras logo
+    pdf.cell(0, 8, "ASIGNACIÓN DE EQUIPO DE TRABAJO", ln=True, align='C')
+    pdf.ln(6)
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 8, f"Yo ____________________________, con tarjeta de identidad número ____________________________, del departamento de {departamento},\n\nestoy recibiendo por parte de MOTOS (OPERACIONES), el siguiente equipo de trabajo con las siguientes características:")
+    pdf.ln(2)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"Dispositivo: {dispositivo}", ln=True)
+    pdf.cell(0, 7, f"Marca: {marca}", ln=True)
+    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 7, f"Imei: {imei}", ln=True)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"Modelo: {modelo}    Plan: {plan}", ln=True)
+    pdf.cell(0, 7, f"Serie: {serie}    Área: {area}", ln=True)
+    pdf.cell(0, 7, f"Estado: {estado}    Cargador: {cargador}", ln=True)
+    pdf.cell(0, 7, f"Funcionalidad: {funcionalidad}    Número corporativo: {numero_corporativo}", ln=True)
+    pdf.ln(2)
+    pdf.set_font("Arial", size=11)
+    pdf.multi_cell(0, 7, "El cual recibo en perfectas condiciones, y el cual queda bajo mi responsabilidad, comprometiéndome al uso adecuado del mismo, y a entregarlo al retirarme de la empresa. De comprobarse que por negligencia o mal manejo lo dañara, autorizo a la empresa la deducción respectiva del monto correspondiente.")
+    pdf.ln(4)
+    pdf.cell(0, 7, f"En la ciudad de {ciudad}, a los ___ días de ________ del {fecha}", ln=True)
+    pdf.ln(10)
+    pdf.cell(80, 7, "_________________________", ln=0, align='C')
+    pdf.cell(30, 7, "", ln=0)
+    pdf.cell(80, 7, "_________________________", ln=1, align='C')
+    pdf.cell(80, 7, "Responsable", ln=0, align='C')
+    pdf.cell(30, 7, "", ln=0)
+    pdf.cell(80, 7, "Coordinador Lty Seguridad", ln=1, align='C')
+    pdf.ln(6)
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"VALOR DE EQUIPO: L{valor_equipo:,.2f}", ln=True)
+    import io
+    buffer = io.BytesIO()
+    pdf.output(buffer)
+    return buffer.getvalue()
+
+
+def _texto_seguro_pdf(texto):
+    """Limpia el texto para evitar errores de codificación en PDF."""
+    if not isinstance(texto, str):
+        texto = str(texto)
+    # Reemplaza caracteres problemáticos básicos
+    return texto.replace('\u2013', '-').replace('\u2014', '-').replace('\u2018', "'").replace('\u2019', "'").replace('\u201c', '"').replace('\u201d', '"')
+import streamlit as st
+from fpdf import FPDF
+st.markdown("---")
+# st.image("logo_pantalla_app.png", caption="KM MOTOS", use_column_width=True)
+
+def _leer_tasa_cache():
+    """Lee el archivo de cache de tasa si existe y lo retorna, o None si no existe."""
+    try:
+        if os.path.exists(ARCHIVO_TASA_CACHE):
+            with open(ARCHIVO_TASA_CACHE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return None
+import streamlit as st
+import os
+import json
+import pandas as pd
+import hashlib
+import sqlite3
+import re
+import unicodedata
+from datetime import datetime, timedelta
+
+# Definir ARCHIVO_TASA_CACHE si no existe
+ARCHIVO_TASA_CACHE = "tasa_usd_hnl_cache.json"
+
+# Definir _guardar_tasa_cache si no existe
+def _guardar_tasa_cache(tasa, fuente):
+    payload = {
+        "tasa": float(tasa),
+        "fuente": str(fuente).strip() or "desconocida",
+        "actualizado_en": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    try:
+        with open(ARCHIVO_TASA_CACHE, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+    except Exception:
+        pass
 def _pdf_a_bytes(pdf):
     """Convierte un objeto FPDF a bytes para descarga."""
     import io
     buffer = io.BytesIO()
     pdf.output(buffer)
     return buffer.getvalue()
-
-import streamlit as st
-import pandas as pd
-import warnings
-
-try:
-    warnings.filterwarnings("ignore", category=FutureWarning)
-except Exception:
-    pass
-import json
-import pickle
-from datetime import datetime, timedelta
-import os
-try:
-    import requests
-except ImportError:
-    requests = None
-import re
-import time
-import unicodedata
-import hashlib
-import sqlite3
-
-try:
-    from fpdf import FPDF
-except ImportError:
-    FPDF = None
-
-
-ARCHIVO_TASA_CACHE = "tasa_usd_hnl_cache.json"
-ARCHIVO_TASA_HISTORIAL = "tasa_usd_hnl_historial.json"
-PORCENTAJE_ALERTA_VARIACION = 0.5  # Alerta si cambia >= 0.5% respecto al ultimo registro del dia
-
-
-def _texto_seguro_pdf(valor, max_fragmento=30):
-    """Normaliza texto para FPDF evitando saltos/problematicos y palabras demasiado largas."""
-    texto = str(valor or "").replace("\r", " ").replace("\n", " ").strip()
-    texto = re.sub(r"\s+", " ", texto)
-    if not texto:
-        return ""
-
-    fragmentos = []
-    for token in texto.split(" "):
-        # Solo corta palabras largas para evitar desbordes en PDF
-        while len(token) > max_fragmento:
-            fragmentos.append(token[:max_fragmento] + "-")
-            token = token[max_fragmento:]
-        fragmentos.append(token)
-    return " ".join(fragmentos)
-
-# --- El siguiente bloque pertenece a la verificación de variación de tasa, no a la exportación ---
-def verificar_alerta_variacion(historial, hoy, tasa_nueva, PORCENTAJE_ALERTA_VARIACION):
-    primeras_hoy = [e for e in historial if e.get("fecha") == hoy]
-    if len(primeras_hoy) < 1:
-        return None
-    tasa_base = primeras_hoy[0]["tasa"]
-    if tasa_base == 0:
-        return None
-    variacion_pct = abs(tasa_nueva - tasa_base) / tasa_base * 100
-    if variacion_pct >= PORCENTAJE_ALERTA_VARIACION:
-        signo = "▲" if tasa_nueva > tasa_base else "▼"
-        return (
-            f"{signo} Variacion de {variacion_pct:.4f}% respecto a la tasa inicial del dia "
-            f"({tasa_base:.4f} -> {tasa_nueva:.4f} HNL/USD)"
-        )
-    return None
-
-
-def _normalizar_tasa(valor):
-    """Valida que la tasa sea numerica y razonable para USD->HNL."""
-    try:
-        tasa = float(valor)
-    except (TypeError, ValueError):
-        return None
-
-    if 15.0 <= tasa <= 50.0:
-        return round(tasa, 6)
-    return None
-
-
-def _leer_tasa_cache():
-    """Lee cache local de tasa si existe."""
-    if not os.path.exists(ARCHIVO_TASA_CACHE):
-        return None
-
-    try:
-        with open(ARCHIVO_TASA_CACHE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        tasa = _normalizar_tasa(data.get("tasa"))
-        actualizado_en = data.get("actualizado_en")
-        fuente = str(data.get("fuente", "cache local")).strip() or "cache local"
-        if tasa and actualizado_en:
-            return {
-                "tasa": tasa,
-                "fuente": fuente,
-                "actualizado_en": actualizado_en,
-            }
-    except Exception:
-        return None
-
-    return None
-
-
-def _guardar_tasa_cache(tasa, fuente):
     """Guarda tasa en disco para persistencia entre reinicios."""
     payload = {
         "tasa": float(tasa),
@@ -1557,376 +1685,29 @@ def construir_plan_desde_fila(row, tasa_default):
 
 def render_hero_principal(usuario, rol):
     """Renderiza cabecera principal tipo hero con animacion suave."""
-    _pref = st.session_state.get("preferencias", {}) if isinstance(st.session_state.get("preferencias", {}), dict) else {}
-    _hero_style = str(_pref.get("estilo_hero", "iPhone")).strip().lower()
-    _hero_is_android = _hero_style == "android"
-    _hero_css_class = "hero-android" if _hero_is_android else "hero-iphone"
-    st.markdown(
-        f"""
-        <style>
-            .hero-wrap {{
-                width: min(356px, 94vw);
-                min-height: 560px;
-                margin: 8px auto 14px auto;
-                border-radius: 42px;
-                padding: 18px;
-                position: relative;
-                isolation: isolate;
-                display: flex;
-                background:
-                    linear-gradient(175deg, rgba(212, 232, 249, 0.30), rgba(158, 173, 207, 0.22) 38%, rgba(73, 116, 155, 0.30));
-                border: 2px solid rgba(154, 209, 246, 0.36);
-                box-shadow:
-                    0 28px 46px rgba(0, 0, 0, 0.36),
-                    0 0 0 1px rgba(120, 191, 240, 0.18),
-                    inset 0 0 0 1px rgba(255, 255, 255, 0.10);
-                animation: heroFadeIn 700ms ease-out;
-                overflow: hidden;
-            }}
-
-            /* Bloquea traduccion automatica del navegador en etiquetas criticas del hero */
-            .notranslate,
-            [translate="no"] {{
-                translate: no;
-            }}
-
-            .hero-wrap::before {{
-                content: "";
-                position: absolute;
-                top: 74px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 9px;
-                height: 9px;
-                border-radius: 50%;
-                background: radial-gradient(circle at 35% 30%, #afe4ff, #18334f 65%);
-                box-shadow: 0 0 0 2px rgba(6, 14, 24, 0.9), 0 0 8px rgba(123, 196, 247, 0.26);
-                z-index: 4;
-            }}
-
-            .hero-wrap::after {{
-                content: "";
-                position: absolute;
-                bottom: 13px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 92px;
-                height: 6px;
-                border-radius: 20px;
-                background: rgba(216, 241, 255, 0.84);
-                box-shadow: 0 0 10px rgba(149, 215, 255, 0.26);
-                z-index: 4;
-            }}
-
-            .hero-wrap.hero-android {{
-                border-radius: 32px;
-                border-color: rgba(152, 225, 194, 0.34);
-                background: linear-gradient(175deg, rgba(188, 224, 214, 0.24), rgba(112, 171, 150, 0.20) 40%, rgba(74, 126, 114, 0.24));
-                box-shadow:
-                    0 26px 42px rgba(0, 0, 0, 0.34),
-                    0 0 0 1px rgba(136, 214, 182, 0.16),
-                    inset 0 0 0 1px rgba(255, 255, 255, 0.09);
-            }}
-
-            .hero-wrap.hero-android::before {{
-                top: 72px;
-                width: 8px;
-                height: 8px;
-                background: radial-gradient(circle at 35% 30%, #b9f3df, #17362f 65%);
-                box-shadow: 0 0 0 2px rgba(5, 16, 13, 0.86), 0 0 8px rgba(139, 234, 201, 0.24);
-            }}
-
-            .hero-wrap.hero-android::after {{
-                width: 70px;
-                height: 5px;
-                background: rgba(210, 240, 230, 0.78);
-                box-shadow: 0 0 8px rgba(116, 205, 174, 0.22);
-            }}
-
-            .hero-screen {{
-                position: relative;
-                width: 100%;
-                min-height: 520px;
-                border-radius: 34px;
-                padding: 96px 18px 26px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                gap: 10px;
-                background:
-                    radial-gradient(circle at 50% 8%, rgba(165, 220, 255, 0.22), transparent 29%),
-                    radial-gradient(circle at 12% 88%, rgba(74, 140, 212, 0.18), transparent 34%),
-                    linear-gradient(165deg, rgba(6, 19, 35, 0.95), rgba(11, 33, 58, 0.96) 48%, rgba(19, 49, 79, 0.96));
-                border: 1px solid rgba(184, 224, 251, 0.28);
-                box-shadow:
-                    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-                    inset 0 -26px 34px rgba(5, 12, 22, 0.34);
-                overflow: hidden;
-            }}
-
-            .hero-wrap.hero-android .hero-screen {{
-                border-radius: 22px;
-                border-color: rgba(168, 231, 206, 0.24);
-                background:
-                    radial-gradient(circle at 50% 8%, rgba(176, 238, 219, 0.18), transparent 30%),
-                    radial-gradient(circle at 12% 88%, rgba(78, 151, 130, 0.16), transparent 34%),
-                    linear-gradient(165deg, rgba(9, 30, 26, 0.95), rgba(12, 45, 38, 0.96) 48%, rgba(24, 64, 55, 0.96));
-            }}
-
-            .hero-island {{
-                position: absolute;
-                top: 12px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 118px;
-                height: 28px;
-                border-radius: 18px;
-                background:
-                    radial-gradient(circle at 22% 50%, rgba(139, 206, 255, 0.9) 0 1px, rgba(16, 30, 46, 0.94) 1.1px 4px, transparent 4.2px),
-                    linear-gradient(180deg, rgba(4, 9, 16, 0.98), rgba(11, 21, 34, 0.98));
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-                z-index: 3;
-            }}
-
-            .hero-wrap.hero-android .hero-island {{
-                top: 10px;
-                width: 82px;
-                height: 16px;
-                border-radius: 9px;
-                background: linear-gradient(180deg, rgba(5, 16, 13, 0.98), rgba(12, 33, 27, 0.98));
-                border-color: rgba(255, 255, 255, 0.10);
-            }}
-
-            .hero-side-btn {{
-                position: absolute;
-                right: -3px;
-                width: 3px;
-                border-radius: 99px;
-                background: linear-gradient(180deg, rgba(193, 224, 248, 0.74), rgba(128, 167, 197, 0.74));
-                box-shadow: 0 0 0 1px rgba(21, 47, 72, 0.40);
-                opacity: 0.9;
-            }}
-
-            .hero-side-btn.top {{
-                top: 160px;
-                height: 56px;
-            }}
-
-            .hero-side-btn.bottom {{
-                top: 228px;
-                height: 34px;
-            }}
-
-            .hero-side-btn-left {{
-                position: absolute;
-                left: -3px;
-                top: 176px;
-                width: 3px;
-                height: 48px;
-                border-radius: 99px;
-                background: linear-gradient(180deg, rgba(193, 224, 248, 0.70), rgba(128, 167, 197, 0.70));
-                box-shadow: 0 0 0 1px rgba(21, 47, 72, 0.36);
-                opacity: 0.9;
-            }}
-
-            .hero-wrap.hero-android .hero-side-btn,
-            .hero-wrap.hero-android .hero-side-btn-left {{
-                background: linear-gradient(180deg, rgba(187, 230, 214, 0.68), rgba(118, 171, 152, 0.68));
-                box-shadow: 0 0 0 1px rgba(18, 57, 45, 0.34);
-            }}
-
-            .hero-title {{
-                margin: 2px auto 0 auto;
-                width: 100%;
-                max-width: 100%;
-                padding: 0 6px;
-                font-size: clamp(13px, 1.35vw, 18px);
-                line-height: 1.1;
-                color: #f5fbff;
-                letter-spacing: 0;
-                font-weight: 700;
-                text-transform: uppercase;
-                text-align: center;
-                text-wrap: balance;
-                word-break: keep-all;
-                overflow-wrap: normal;
-                hyphens: none;
-            }}
-
-            .hero-title .hero-line {{
-                display: block;
-                white-space: nowrap;
-                margin: 0;
-            }}
-
-            .hero-title .hero-line + .hero-line {{
-                margin-top: 4px;
-            }}
-
-            .hero-title .hero-line:nth-child(2) {{
-                font-size: 0.88em;
-            }}
-
-            .hero-wrap.hero-android .hero-title {{
-                letter-spacing: 0.06px;
-                line-height: 1.1;
-            }}
-
-            .hero-subtitle {{
-                margin: 10px auto 0 auto;
-                max-width: 258px;
-                color: rgba(219, 239, 255, 0.9);
-                font-size: clamp(13px, 1.03vw, 15px);
-                line-height: 1.52;
-                letter-spacing: 0.12px;
-                text-align: center;
-                text-wrap: pretty;
-            }}
-
-            .hero-wrap.hero-android .hero-subtitle {{
-                max-width: 252px;
-                margin-top: 9px;
-                color: rgba(217, 244, 235, 0.9);
-                line-height: 1.48;
-            }}
-
-            .hero-meta {{
-                margin-top: auto;
-                color: rgba(216, 236, 252, 0.84);
-                font-size: 12px;
-                letter-spacing: 0.15px;
-                line-height: 1.35;
-                text-align: center;
-                border-top: 1px solid rgba(177, 222, 255, 0.2);
-                padding-top: 12px;
-            }}
-
-            .hero-wrap.hero-android .hero-meta {{
-                color: rgba(212, 241, 232, 0.84);
-                border-top-color: rgba(163, 223, 201, 0.22);
-            }}
-
-            @media (max-width: 640px) {{
-                .hero-wrap {{
-                    width: min(360px, 96vw);
-                    min-height: 540px;
-                    border-radius: 34px;
-                    padding: 14px;
-                }}
-
-                .hero-wrap.hero-android {{
-                    border-radius: 30px;
-                }}
-
-                .hero-screen {{
-                    min-height: 504px;
-                    border-radius: 30px;
-                    padding: 90px 12px 24px;
-                }}
-
-                .hero-wrap.hero-android .hero-screen {{
-                    border-radius: 20px;
-                }}
-
-                .hero-title {{
-                    padding: 0 4px;
-                    font-size: clamp(12px, 3.7vw, 16px);
-                    line-height: 1.08;
-                    letter-spacing: 0;
-                }}
-
-                .hero-title .hero-line + .hero-line {{
-                    margin-top: 3px;
-                }}
-
-                .hero-title .hero-line:nth-child(2) {{
-                    font-size: 0.86em;
-                }}
-
-                .hero-subtitle {{
-                    max-width: 234px;
-                    font-size: 14px;
-                }}
-
-                .hero-meta {{
-                    font-size: 11px;
-                }}
-            }}
-
-            @keyframes heroFadeIn {{
-                from {{ opacity: 0; transform: translateY(8px); }}
-                to {{ opacity: 1; transform: translateY(0); }}
-            }}
-        </style>
-        <section class="hero-wrap {_hero_css_class} notranslate" translate="no" lang="es">
-            <span class="hero-side-btn-left"></span>
-            <span class="hero-side-btn top"></span>
-            <span class="hero-side-btn bottom"></span>
-            <section class="hero-screen notranslate" translate="no" lang="es">
-                <span class="hero-island"></span>
-                <h1 class="hero-title notranslate" translate="no" lang="es">
-                    <span class="hero-line notranslate" translate="no">PLANES</span>
-                    <span class="hero-line notranslate" translate="no">CORPORATIVOS</span>
-                    <span class="hero-line notranslate" translate="no">KM MOTOS</span>
-                </h1>
-                <p class="hero-subtitle notranslate" translate="no" lang="es">Control centralizado de lineas y asignaciones corporativas.</p>
-                <div class="hero-meta notranslate" translate="no" lang="es">Usuario: {usuario} | Rol: {rol}</div>
-            </section>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"""
+    <div style='width: 230px; height: 470px; margin: 28px auto 20px auto; border-radius: 38px; border: 4px solid #111; background: #111; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; display: flex; flex-direction: column;'>
+        <!-- Notch superior tipo iPhone -->
+        <div style='height: 36px; width: 100%; position: relative; display: flex; align-items: center; justify-content: center;'>
+            <div style='width: 64px; height: 18px; background: #111; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.18); display: flex; align-items: center; justify-content: center; position: absolute; top: 8px;'>
+                <div style='width: 36px; height: 10px; background: #222; border-radius: 6px; margin-right: 6px;'></div>
+                <div style='width: 7px; height: 7px; background: #222; border-radius: 50%; border: 2px solid #0f0;'></div>
+            </div>
+        </div>
+        <!-- Pantalla blanca -->
+        <div style='background: #fff; border-radius: 24px; margin: 0 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px 8px 18px 8px; flex: 1 1 auto; min-height: 0; text-align: center; display: flex; flex-direction: column; justify-content: center;'>
+            <div style='font-size: 1.11em; font-weight: bold; letter-spacing: 1px; color: #1a2233; margin-bottom: 2px;'>PLANES CORPORATIVOS</div>
+            <div style='font-size: 1em; color: #2d3a4d; margin-bottom: 6px;'>KM MOTOS</div>
+            <div style='font-size: 0.93em; color: #3a4a5d; margin-bottom: 8px;'>Control centralizado de líneas y asignaciones corporativas</div>
+            <div style='font-size: 0.92em; color: #4a5a6d;'>Usuario: <b>{usuario}</b> | Rol: <b>{rol}</b></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def render_kpi_cards(total_lineas, gasto_total, areas_diff, deptos_diff):
     """Renderiza KPIs en tarjetas premium estilo glass."""
-    st.markdown(
-        f"""
-        <style>
-            .kpi-grid {{
-                display: grid;
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-                gap: 12px;
-                margin-bottom: 10px;
-            }}
-
-            .kpi-card {{
-                border-radius: 14px;
-                padding: 14px 14px 12px;
-                background: linear-gradient(135deg, rgba(255,255,255,0.17), rgba(255,255,255,0.07));
-                border: 1px solid rgba(255,255,255,0.24);
-                box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
-                backdrop-filter: blur(4px);
-            }}
-
-            .kpi-label {{
-                margin: 0;
-                color: rgba(232, 245, 255, 0.88);
-                font-size: 13px;
-            }}
-
-            .kpi-value {{
-                margin: 4px 0 0 0;
-                color: #ffffff;
-                font-size: clamp(26px, 2.4vw, 34px);
-                font-weight: 700;
-                line-height: 1.1;
-            }}
-
-            @media (max-width: 960px) {{
-                .kpi-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
-            }}
-        </style>
-        <div class="kpi-grid">
-            <div class="kpi-card"><p class="kpi-label">Total de Líneas</p><p class="kpi-value">{total_lineas}</p></div>
-            <div class="kpi-card"><p class="kpi-label">Gasto Total (USD)</p><p class="kpi-value">${gasto_total:,.2f}</p></div>
-            <div class="kpi-card"><p class="kpi-label">Áreas Diferentes</p><p class="kpi-value">{areas_diff}</p></div>
-            <div class="kpi-card"><p class="kpi-label">Departamentos</p><p class="kpi-value">{deptos_diff}</p></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"**Total de Líneas:** {total_lineas}  |  **Gasto Total (USD):** ${gasto_total:,.2f}  |  **Áreas Diferentes:** {areas_diff}  |  **Departamentos:** {deptos_diff}")
 
 
 def render_semaforo_lineas(total_lineas, lineas_libres):
@@ -1945,46 +1726,7 @@ def render_semaforo_lineas(total_lineas, lineas_libres):
         color = "#f1c40f"
         mensaje = "Disponibilidad moderada; conviene monitorear."
     else:
-        estado = "ROJO"
-        color = "#e74c3c"
-        mensaje = "Pocas lineas libres; evaluar nueva contratacion."
-
-    st.markdown(
-        f"""
-        <div style="display:flex;align-items:center;gap:12px;margin:6px 0 14px 0;
-                    padding:10px 12px;border-radius:12px;
-                    background:rgba(255,255,255,0.11);border:1px solid rgba(255,255,255,0.22);">
-            <div style="width:16px;height:16px;border-radius:50%;background:{color};box-shadow:0 0 14px {color};"></div>
-            <div style="color:#f6fbff;font-size:14px;"><b>Semaforo de lineas:</b> {estado} | {mensaje}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def construir_pdf_ejecutivo_dashboard(df, total_lineas, lineas_asignadas, lineas_libres):
-    """Genera PDF ejecutivo para el dashboard."""
-    if FPDF is None:
-        return None
-
-    pdf = FPDF(format='letter')
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 14)
-    pdf.cell(0, 10, "Reporte Ejecutivo - Dashboard Corporativo", ln=True, align='C')
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 8, f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
-    pdf.ln(2)
-
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 8, "Indicadores Generales", ln=True)
-    pdf.set_font("Arial", size=10)
-    pdf.cell(0, 7, f"Total de lineas: {total_lineas}", ln=True)
-    pdf.cell(0, 7, f"Lineas asignadas: {lineas_asignadas}", ln=True)
-    pdf.cell(0, 7, f"Lineas libres/disponibles: {lineas_libres}", ln=True)
-    pdf.cell(0, 7, f"Gasto total (USD): ${df['valor_usd'].sum():,.2f}", ln=True)
-    pdf.cell(0, 7, f"Promedio por plan (USD): ${df['valor_usd'].mean():,.2f}", ln=True)
-    pdf.ln(3)
+        st.markdown(f"**Total de Líneas:** {total_lineas}  |  **Gasto Total (USD):** ${gasto_total:,.2f}  |  **Áreas Diferentes:** {areas_diff}  |  **Departamentos:** {deptos_diff}")
 
     pdf.set_font("Arial", "B", 11)
     pdf.cell(0, 8, "Top Areas por Gasto", ln=True)
@@ -2266,77 +2008,7 @@ def _obtener_credencial_recordada_preferida(usuario_sugerido=""):
 def pantalla_login():
     """Pantalla de login"""
     col1, col2, col3 = st.columns([1, 2, 1])
-    
     with col2:
-        st.markdown(
-            """
-            <h2 style="margin:0; display:flex; align-items:center; gap:10px; color:#f3f8ff;">
-                <span style="
-                    position:relative;
-                    display:inline-flex;
-                    align-items:center;
-                    justify-content:center;
-                    width:36px;
-                    height:62px;
-                    border-radius:12px;
-                    background:linear-gradient(160deg, rgba(18,28,48,0.96), rgba(9,14,25,0.98));
-                    border:1px solid rgba(255,255,255,0.18);
-                    transform: rotate(-6deg);
-                    box-shadow:
-                        0 0 0 1px rgba(52, 211, 153, 0.24),
-                        0 0 12px rgba(59, 130, 246, 0.35),
-                        0 0 16px rgba(250, 204, 21, 0.25),
-                        0 6px 10px rgba(0,0,0,0.44);
-                ">
-                    <span style="
-                        position:absolute;
-                        left:3px;
-                        right:3px;
-                        top:5px;
-                        bottom:6px;
-                        border-radius:9px;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        font-size:20px;
-                        line-height:1;
-                        background:
-                            radial-gradient(circle at 25% 20%, rgba(255,255,255,0.14), transparent 45%),
-                            linear-gradient(150deg, #0f3b2a, #0f2f61 45%, #5c1414);
-                        text-shadow:
-                            0 0 2px rgba(255,255,255,0.55),
-                            0 0 10px rgba(52,211,153,0.55),
-                            0 0 14px rgba(59,130,246,0.45),
-                            0 0 18px rgba(250,204,21,0.35);
-                    ">🏍️</span>
-                    <span style="
-                        position:absolute;
-                        top:4px;
-                        left:50%;
-                        transform:translateX(-50%);
-                        width:14px;
-                        height:3px;
-                        border-radius:999px;
-                        background:rgba(225,238,255,0.72);
-                    "></span>
-                    <span style="
-                        position:absolute;
-                        bottom:3px;
-                        left:50%;
-                        transform:translateX(-50%);
-                        width:12px;
-                        height:2px;
-                        border-radius:999px;
-                        background:rgba(225,238,255,0.68);
-                    "></span>
-                </span>
-                <span>PLANES CORPORATIVOS KM MOTOS</span>
-            </h2>
-            """,
-            unsafe_allow_html=True,
-        )
-        st.markdown("---")
-
         # Al abrir login, intenta cargar credenciales automaticamente una sola vez.
         if not st.session_state.get("recordarme_autocarga_aplicada", False):
             if (
@@ -2377,22 +2049,6 @@ def pantalla_login():
             key="recordarme_este_equipo",
             help="Si está activo, al iniciar sesión se guardarán tus credenciales para cargarlas con el botón Recordarme.",
         )
-
-        if st.button("🏍️ Recordarme", width="stretch"):
-            usuario_buscado, cred = _obtener_credencial_recordada_preferida(usuario)
-
-            if cred and cred.get("contrasena"):
-                st.session_state.recordarme_prefill = {
-                    "usuario": usuario_buscado,
-                    "contrasena": cred.get("contrasena", ""),
-                }
-                st.session_state.recordarme_feedback = f"Credenciales cargadas para {usuario_buscado}"
-                st.rerun()
-            else:
-                st.info(
-                    "No hay credenciales guardadas todavia. "
-                    "Inicia sesion una vez con 'Recordarme este equipo' activado."
-                )
 
         if st.button("🚀 Iniciar Sesión", width="stretch"):
             valido, info = gestor_usuarios.validar_usuario(usuario, contrasena)
@@ -2934,7 +2590,21 @@ else:
         label_visibility="collapsed",
     )
 
-    render_hero_principal(st.session_state.usuario_actual, st.session_state.rol)
+
+# --- Mostrar el banner visual del celular solo al final de la app ---
+
+# --- Banner visual del celular al final de la app ---
+
+# --- Banner visual del celular al final de la app ---
+
+# --- Banner visual del celular al final de la app ---
+
+# --- Banner visual del celular al final de la app ---
+
+# --- Banner visual del celular al final de la app ---
+
+# --- Banner visual del celular al final de la app (última línea) ---
+
 
 es_editor = bool(st.session_state.puede_editar or st.session_state.rol in ["administrador", "superadministrador"])
 permiso_crear = tiene_permiso("crear")
@@ -3152,7 +2822,49 @@ if vista_actual == "agregar":
             st.error("❌ Por favor completa los campos obligatorios: Número, Nombre, Área, Departamento y Perfil Profesional")
 
 # ============ TAB 3: GESTIONAR PLANES ============
+
 if vista_actual == "gestionar":
+    # --- Estilo visual verde para la tabla de gestionar ---
+    st.markdown(
+        """
+        <style>
+        [data-testid="stDataFrame"] {
+            background: #2ecc40;
+            border: 3px solid #145c1b;
+            border-radius: 18px;
+            box-shadow: 0 6px 24px 0 rgba(46,204,64,0.18), 0 0 0 2px #2ecc4055;
+            overflow: hidden;
+        }
+        [data-testid="stDataFrame"] thead tr th {
+            background: #145c1b;
+            color: #fff;
+            font-weight: 900;
+            font-size: 1.13em;
+            letter-spacing: 0.7px;
+            border-bottom: 3px solid #2ecc40;
+            text-shadow: 0 1px 0 #fff8;
+            text-align: center;
+            box-shadow: 0 4px 16px 0 rgba(20,92,27,0.25), 0 1.5px 0 #2ecc40;
+        }
+        [data-testid="stDataFrame"] tbody tr {
+            background: rgba(255,255,255,0.10);
+            transition: background 0.22s, color 0.22s;
+        }
+        [data-testid="stDataFrame"] tbody tr:hover {
+            background: #2ecc40 !important;
+            color: #145c1b !important;
+            font-weight: 700;
+        }
+        [data-testid="stDataFrame"] td {
+            font-size: 1.07em;
+            font-weight: 500;
+            color: #fff;
+            text-align: center;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.subheader("📋 Gestionar Planes - KM MOTOS")
     render_bloque_operador_tigo()
 
@@ -3378,15 +3090,19 @@ if vista_actual == "gestionar":
                 _footer_rows.append(_rf)
 
                 if formato_descarga == "CSV":
-                    _lineas_csv = [
-                        _titulo_reporte,
-                        _texto_filtros,
-                        _texto_registros,
-                        "",
-                    ]
-                    _csv_tabla = _df_export.to_csv(index=False)
-                    _csv_footer = pd.DataFrame(_footer_rows).to_csv(index=False, header=False)
-                    _csv_data = ("\n".join(_lineas_csv) + "\n" + _csv_tabla + _csv_footer).encode("utf-8")
+                    # Encabezados personalizados como filas, tabla con headers reales
+                    _csv_lines = []
+                    # Título, filtros y registros como filas independientes
+                    _csv_lines.append(f'"{_titulo_reporte}"')
+                    _csv_lines.append(f'"{_texto_filtros}"')
+                    _csv_lines.append(f'"{_texto_registros}"')
+                    _csv_lines.append("")
+                    # Tabla principal con encabezados reales
+                    _csv_lines.append(_df_export.to_csv(index=False, lineterminator='\n').strip())
+                    # Footer (sin encabezado)
+                    if _footer_rows:
+                        _csv_lines.append(pd.DataFrame(_footer_rows).to_csv(index=False, header=False, lineterminator='\n').strip())
+                    _csv_data = ("\n".join(_csv_lines)).encode("utf-8")
                     st.download_button(
                         label="Descargar CSV",
                         data=_csv_data,
@@ -3643,7 +3359,7 @@ if vista_actual == "gestionar":
             _buscar_emp = st.text_input(
                 "Buscar empleado (nombre, área, perfil o departamento):",
                 placeholder="Escribe para filtrar...",
-                key=f"buscar_emp_edit_{indice_seleccionado}",
+                key=f"buscar_emp_edit_{indice_seleccionado}"
             )
             _patron_emp = _buscar_emp.strip().lower()
             _emps_filtrados = [
@@ -3682,6 +3398,10 @@ if vista_actual == "gestionar":
 
         # La clave del form cambia con el empleado seleccionado para refrescar los campos pre-rellenos
         _form_key_edit = f"form_editar_plan_{indice_seleccionado}_{_sel_emp_raw}_{_patron_emp if st.session_state.empleados else 0}"
+
+        # Inicializar historiales para evitar errores de variable no definida
+        dispositivo_historial_actual = list(plan_sel.get('dispositivo_historial', []))
+        asignaciones_historial_actual = list(plan_sel.get('asignaciones_historial', []))
 
         with st.form(key=_form_key_edit):
             numero_edit = st.text_input("📞 Número Corporativo", value=plan_sel.get('numero', ''))
@@ -3734,53 +3454,66 @@ if vista_actual == "gestionar":
             imei2_edit = st.text_input("📳 IMEI 2", value=plan_sel.get('imei2', ''))
             motivo_cambio_dispositivo_edit = st.text_input("📝 Motivo de cambio de dispositivo (si aplica)", "")
 
+
             guardar_edicion = st.form_submit_button("💾 Guardar cambios", disabled=not permiso_editar)
-            if guardar_edicion:
-                numero_edit = normalizar_numero_telefonico(numero_edit)
-                if not numero_edit:
-                    st.error("❌ El número corporativo es obligatorio.")
-                    st.stop()
 
-                existentes_otros = {
-                    normalizar_numero_telefonico(p.get('numero', ''))
-                    for idx, p in enumerate(st.session_state.planes)
-                    if idx != indice_seleccionado
+        # Fuera del formulario: botón de descarga de responsiva PDF
+        pdf_bytes = generar_responsiva_completa_pdf(
+            empleado=nombre_edit,
+            departamento=area_edit,
+            dispositivo=dispositivo_asignado_edit,
+            marca=marca_dispositivo_edit,
+            imei=f"{imei1_edit} / {imei2_edit}",
+            modelo=modelo_dispositivo_edit,
+            plan=perfil_edit,
+            serie=serie_dispositivo_edit,
+            area=area_edit,
+            estado="NUEVO",
+            cargador="Original",
+            funcionalidad="100%",
+            numero_corporativo=numero_edit,
+            valor_equipo=valor_usd_edit,
+            ciudad="COMAYAGUA",
+            fecha=str(datetime.now().year),
+            logo_path="km_motos_banner.png"
+        )
+        st.download_button(
+            label="Generar responsiva PDF",
+            data=pdf_bytes,
+            file_name=f"responsiva_{nombre_edit}.pdf",
+            mime="application/pdf",
+            key="btn_responsiva_pdf"
+        )
+
+        if (dispositivo_asignado_edit != plan_sel.get('dispositivo_asignado', '') or
+            marca_dispositivo_edit != plan_sel.get('marca', '') or
+            modelo_dispositivo_edit != plan_sel.get('modelo', '') or
+            serie_dispositivo_edit != plan_sel.get('serie_dispositivo', '') or
+            imei1_edit != plan_sel.get('imei1', '') or
+            imei2_edit != plan_sel.get('imei2', '')):
+            if motivo_cambio_dispositivo_edit:
+                cambio_entry = {
+                    'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'usuario': st.session_state.usuario_actual,
+                    'motivo': motivo_cambio_dispositivo_edit,
+                    'dispositivo_asignado': dispositivo_asignado_edit,
+                    'marca': marca_dispositivo_edit,
+                    'modelo': modelo_dispositivo_edit,
+                    'serie_dispositivo': serie_dispositivo_edit,
+                    'imei1': imei1_edit,
+                    'imei2': imei2_edit
                 }
-                if numero_edit in existentes_otros:
-                    st.error("❌ Ya existe otro plan con este número corporativo.")
-                    st.stop()
-
-                dispositivo_historial_actual = plan_sel.get('dispositivo_historial', [])
-
-                if (dispositivo_asignado_edit != plan_sel.get('dispositivo_asignado', '') or
-                    marca_dispositivo_edit != plan_sel.get('marca', '') or
-                    modelo_dispositivo_edit != plan_sel.get('modelo', '') or
-                    serie_dispositivo_edit != plan_sel.get('serie_dispositivo', '') or
-                    imei1_edit != plan_sel.get('imei1', '') or
-                    imei2_edit != plan_sel.get('imei2', '')):
-                    if motivo_cambio_dispositivo_edit:
-                        cambio_entry = {
-                            'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            'usuario': st.session_state.usuario_actual,
-                            'motivo': motivo_cambio_dispositivo_edit,
-                            'dispositivo_asignado': dispositivo_asignado_edit,
-                            'marca': marca_dispositivo_edit,
-                            'modelo': modelo_dispositivo_edit,
-                            'serie_dispositivo': serie_dispositivo_edit,
-                            'imei1': imei1_edit,
-                            'imei2': imei2_edit
-                        }
-                        dispositivo_historial_actual.append(cambio_entry)
-                        guardar_planes()
-                        registrar_movimiento("Cambio de Dispositivo", f"{numero_edit} - {nombre_edit} - motivo: {motivo_cambio_dispositivo_edit}")
-                        st.info("ℹ️ Historial de dispositivo actualizado.")
-                    else:
-                        st.warning("⚠️ Has modificado información de dispositivo, por favor proporciona un motivo de cambio para registrar el historial.")
+                dispositivo_historial_actual.append(cambio_entry)
+                guardar_planes()
+                registrar_movimiento("Cambio de Dispositivo", f"{numero_edit} - {nombre_edit} - motivo: {motivo_cambio_dispositivo_edit}")
+                st.info("ℹ️ Historial de dispositivo actualizado.")
+            else:
+                st.warning("⚠️ Has modificado información de dispositivo, por favor proporciona un motivo de cambio para registrar el historial.")
 
                 # Registrar cambio de asignación si cambió nombre_personal
                 asignaciones_historial_actual = plan_sel.get('asignaciones_historial', [])
                 nombre_anterior = plan_sel.get('nombre_personal', '')
-                
+
                 # Si el historial está vacío y hay un nombre anterior, crear entrada inicial
                 if not asignaciones_historial_actual and nombre_anterior:
                     asignaciones_historial_actual.append({
@@ -3870,100 +3603,61 @@ if vista_actual == "gestionar":
         st.info("📌 No hay planes registrados aún")
 
 # ============ TAB 4: EMPLEADOS ============
+
 if vista_actual == "empleados":
+    # --- Estilo visual azul para la tabla de empleados ---
+    st.markdown(
+        """
+        <style>
+        [data-testid="stDataFrame"] {
+            background: #2daafc;
+            border: 3px solid #156fa3;
+            border-radius: 18px;
+            box-shadow: 0 6px 24px 0 rgba(45,170,252,0.18), 0 0 0 2px #2daafc55;
+            overflow: hidden;
+        }
+        [data-testid="stDataFrame"] thead tr th {
+            background: #156fa3;
+            color: #fff;
+            font-weight: 900;
+            font-size: 1.13em;
+            letter-spacing: 0.7px;
+            border-bottom: 3px solid #2daafc;
+            text-shadow: 0 1px 0 #fff8;
+            text-align: center;
+            box-shadow: 0 4px 16px 0 rgba(21,111,163,0.25), 0 1.5px 0 #2daafc;
+        }
+        [data-testid="stDataFrame"] tbody tr {
+            background: rgba(255,255,255,0.10);
+            transition: background 0.22s, color 0.22s;
+        }
+        [data-testid="stDataFrame"] tbody tr:hover {
+            background: #b3e5fc !important;
+            color: #156fa3 !important;
+            font-weight: 700;
+            border-left: 4px solid #156fa3 !important;
+            border-right: 4px solid #156fa3 !important;
+            box-shadow: 0 0 8px 2px #2daafc55;
+        }
+        [data-testid="stDataFrame"] td {
+            font-size: 1.07em;
+            font-weight: 500;
+            color: #fff;
+            text-align: center;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.subheader("👥 Catálogo de Empleados Activos")
     st.caption("Importa la base del personal activo para usarla como catálogo al editar asignaciones de líneas.")
 
-    # ---- Importar desde CSV / Excel ----
-    st.markdown("### 📥 Importar base de personal")
-    st.markdown(
-        "El archivo debe contener al menos una columna de **nombre**. "
-        "Columnas reconocidas: `nombre`, `nombre_personal`, `colaborador`, `empleado`, `trabajador` / "
-        "`perfil`, `perfil_profesional`, `cargo`, `puesto` / `area` / `departamento`, `dept`, `sucursal`."
-    )
 
-    arch_emp = st.file_uploader(
-        "Selecciona archivo CSV o Excel:",
-        type=["csv", "xlsx", "xls"],
-        key="uploader_empleados",
-    )
+    # --- Si quieres volver a mostrar el menú de importación, descomenta el siguiente bloque ---
+    # ... código de importación oculto ...
 
-    if arch_emp is not None:
-        try:
-            if arch_emp.name.lower().endswith((".xlsx", ".xls")):
-                _df_emp_raw = pd.read_excel(arch_emp, dtype=str)
-            else:
-                for _enc in ("utf-8", "latin-1", "cp1252"):
-                    try:
-                        arch_emp.seek(0)
-                        _df_emp_raw = pd.read_csv(arch_emp, dtype=str, encoding=_enc)
-                        break
-                    except Exception:
-                        continue
 
-            # Normalizar columnas según plantilla proporcionada
-            _alias_emp = {
-                "no": "no",
-                "nombre_completo": "nombre",
-                "perfil": "perfil_profesional",
-                "area": "area",
-                "departamento": "departamento",
-                "tienda": "tienda",
-                "zona": "zona",
-                "empresa": "empresa",
-            }
-
-            def _norm_col_emp(c):
-                t = unicodedata.normalize("NFKD", str(c).strip().lower())
-                t = "".join(ch for ch in t if not unicodedata.combining(ch))
-                t = re.sub(r"[^a-z0-9_]+", "_", t).strip("_")
-                return t
-
-            _df_emp_raw.columns = [_alias_emp.get(_norm_col_emp(c), _norm_col_emp(c)) for c in _df_emp_raw.columns]
-
-            if "nombre" not in _df_emp_raw.columns:
-                st.error("❌ No se encontró columna de nombre en el archivo. Revisa los encabezados.")
-            else:
-                _df_emp_raw = _df_emp_raw.dropna(subset=["nombre"])
-                _df_emp_raw["nombre"] = _df_emp_raw["nombre"].astype(str).str.strip().str.upper()
-                _df_emp_raw = _df_emp_raw[_df_emp_raw["nombre"].str.len() > 1]
-                # Normalizar y asegurar columnas de plantilla
-                for _col in ("perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"):
-                    if _col not in _df_emp_raw.columns:
-                        _df_emp_raw[_col] = ""
-                    _df_emp_raw[_col] = _df_emp_raw[_col].fillna("").astype(str).str.strip().str.upper()
-
-                _df_emp_preview = _df_emp_raw[[c for c in ["nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_emp_raw.columns]].copy()
-                _df_emp_preview.insert(0, "No.", range(1, len(_df_emp_preview) + 1))
-                st.markdown(f"**Vista previa** — {len(_df_emp_preview)} empleados detectados:")
-                st.dataframe(_df_emp_preview, hide_index=True, height=250)
-
-                _modo_import_emp = st.radio(
-                    "Modo de importación:",
-                    ["Reemplazar catálogo completo", "Agregar a los existentes (no duplicar nombres)"],
-                    key="modo_import_empleados",
-                    horizontal=True,
-                )
-
-                if st.button("✅ Confirmar importación de empleados", key="btn_confirmar_import_emp"):
-                    _nuevos_emp = _df_emp_preview.to_dict(orient="records")
-                    if _modo_import_emp.startswith("Reemplazar"):
-                        st.session_state.empleados = _nuevos_emp
-                    else:
-                        _nombres_existentes = {e.get("nombre", "") for e in st.session_state.empleados}
-                        _agregados = [e for e in _nuevos_emp if e.get("nombre", "") not in _nombres_existentes]
-                        st.session_state.empleados.extend(_agregados)
-                        st.info(f"Se agregaron {len(_agregados)} empleados nuevos (se omitieron duplicados).")
-                    guardar_empleados()
-                    registrar_movimiento("Importar empleados", f"{len(st.session_state.empleados)} registros en catálogo")
-                    st.success(f"✅ Catálogo actualizado: {len(st.session_state.empleados)} empleados.")
-                    st.rerun()
-        except Exception as _err_emp:
-            st.error(f"❌ Error al leer el archivo: {_err_emp}")
-
-    st.markdown("---")
-
-    # ---- Catálogo actual ----
+    # ---- Catálogo actual con edición profesional ----
     st.markdown(f"### 📋 Catálogo actual — {len(st.session_state.empleados)} empleados")
     if st.session_state.empleados:
         _df_cat = pd.DataFrame(st.session_state.empleados)
@@ -3980,12 +3674,17 @@ if vista_actual == "empleados":
                 | _df_cat["perfil_profesional"].str.lower().str.contains(_p, na=False)
             )
             _df_cat = _df_cat[_mask]
-        _df_cat_vista = _df_cat[[c for c in ["nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_cat.columns]].copy()
+
+        columnas_vista = [c for c in ["nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_cat.columns]
+        _df_cat_vista = _df_cat[columnas_vista].copy()
         _df_cat_vista.insert(0, "No.", range(1, len(_df_cat_vista) + 1))
-        st.dataframe(
+
+        # Tabla interactiva con selección de fila
+        st.data_editor(
             _df_cat_vista,
             hide_index=True,
             use_container_width=True,
+            height=350,
             column_config={
                 "No.": st.column_config.NumberColumn("No.", format="%d", width="small"),
                 "nombre": st.column_config.TextColumn("Nombre", width="large"),
@@ -3996,7 +3695,158 @@ if vista_actual == "empleados":
                 "zona": st.column_config.TextColumn("Zona", width="medium"),
                 "empresa": st.column_config.TextColumn("Empresa", width="medium"),
             },
+            key="emp_table_editor"
         )
+
+        # Selección profesional de empleado debajo de la tabla
+        nombres_vista = _df_cat_vista["nombre"].tolist()
+        idx_ver = st.selectbox(
+            "Selecciona un empleado para ver o editar:",
+            options=range(len(nombres_vista)),
+            format_func=lambda i: f"{_df_cat_vista.iloc[i]['No.']}. {nombres_vista[i]}",
+            key="ver_editar_emp_idx_selectbox"
+        )
+        if 0 <= idx_ver < len(_df_cat_vista):
+            nombre_sel = _df_cat_vista.iloc[idx_ver]["nombre"]
+            emp_sel = next((e for e in st.session_state.empleados if e.get("nombre", "") == nombre_sel), None)
+            if emp_sel:
+                # st.markdown(f"#### Información completa de: **{emp_sel.get('nombre','')}**")
+                # st.write(emp_sel)
+                form_key = f"form_edit_emp_{idx_ver}_{emp_sel.get('nombre','').replace(' ','_')}"
+                with st.form(key=form_key):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        nombre_edit = st.text_input("👤 Nombre completo", value=emp_sel.get("nombre", ""))
+                        area_edit = st.text_input("🏢 Área", value=emp_sel.get("area", ""))
+                        tienda_edit = st.text_input("🏬 Tienda", value=emp_sel.get("tienda", ""))
+                    with col2:
+                        perfil_edit = st.text_input("🎓 Perfil profesional", value=emp_sel.get("perfil_profesional", ""))
+                        dept_edit = st.text_input("🏛️ Departamento", value=emp_sel.get("departamento", ""))
+                        zona_edit = st.text_input("🌎 Zona", value=emp_sel.get("zona", ""))
+                    with col3:
+                        empresa_edit = st.text_input("🏢 Empresa", value=emp_sel.get("empresa", ""))
+                    guardar_cambios = st.form_submit_button("💾 Guardar cambios")
+                    eliminar_emp = st.form_submit_button("🗑️ Eliminar empleado")
+                    if guardar_cambios:
+                        cambios = []
+                        for campo, nuevo, viejo in [
+                            ("nombre", nombre_edit.strip().upper(), emp_sel.get("nombre", "")),
+                            ("perfil_profesional", perfil_edit.strip().upper(), emp_sel.get("perfil_profesional", "")),
+                            ("area", area_edit.strip().upper(), emp_sel.get("area", "")),
+                            ("departamento", dept_edit.strip().upper(), emp_sel.get("departamento", "")),
+                            ("tienda", tienda_edit.strip().upper(), emp_sel.get("tienda", "")),
+                            ("zona", zona_edit.strip().upper(), emp_sel.get("zona", "")),
+                            ("empresa", empresa_edit.strip().upper(), emp_sel.get("empresa", "")),
+                        ]:
+                            if nuevo != viejo:
+                                cambios.append(f"{campo}: '{viejo}' → '{nuevo}'")
+                                emp_sel[campo] = nuevo
+                        if cambios:
+                            if "historial_cambios" not in emp_sel or not isinstance(emp_sel["historial_cambios"], list):
+                                emp_sel["historial_cambios"] = []
+                            emp_sel["historial_cambios"].append({
+                                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "usuario": st.session_state.get("usuario_actual", "Sistema"),
+                                "cambios": cambios
+                            })
+                            guardar_empleados()
+                            registrar_movimiento("Editar empleado", f"{emp_sel.get('nombre','')} | {'; '.join(cambios)}")
+                            st.success("✅ Cambios guardados.")
+                            st.rerun()
+                        else:
+                            st.info("No hay cambios para guardar.")
+                    if eliminar_emp:
+                        if st.session_state.get("confirmar_eliminar_emp", None) == idx_ver:
+                            st.session_state.empleados.pop(idx_ver)
+                            guardar_empleados()
+                            registrar_movimiento("Eliminar empleado", f"{emp_sel.get('nombre','')}")
+                            st.success("✅ Empleado eliminado.")
+                            st.session_state["confirmar_eliminar_emp"] = None
+                            st.rerun()
+                        else:
+                            st.session_state["confirmar_eliminar_emp"] = idx_ver
+                            st.warning("Presiona de nuevo para confirmar la eliminación.")
+
+                # Mostrar historial de cambios
+                st.markdown("#### 🕓 Historial de cambios de este empleado")
+                historial = emp_sel.get("historial_cambios", [])
+                if historial:
+                    for evento in sorted(historial, key=lambda x: x.get('fecha', ''), reverse=True):
+                        st.write(f"- {evento.get('fecha')} / {evento.get('usuario')} / Cambios: {', '.join(evento.get('cambios', []))}")
+                else:
+                    st.info("No hay historial de cambios registrado para este empleado.")
+
+        # --- Selección de empleado para editar/eliminar ---
+        st.markdown("### ✏️ Editar o eliminar empleado")
+        empleados_nombres = _df_cat_vista["nombre"].tolist()
+        if empleados_nombres:
+            idx_sel = st.selectbox("Selecciona un empleado:", options=range(len(empleados_nombres)), format_func=lambda i: empleados_nombres[i], key="sel_emp_edit")
+            emp_sel = None
+            if 0 <= idx_sel < len(st.session_state.empleados):
+                emp_sel = st.session_state.empleados[idx_sel]
+            if emp_sel:
+                with st.form(key=f"form_edit_emp_{idx_sel}"):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        nombre_edit = st.text_input("👤 Nombre completo", value=emp_sel.get("nombre", ""))
+                        area_edit = st.text_input("🏢 Área", value=emp_sel.get("area", ""))
+                        tienda_edit = st.text_input("🏬 Tienda", value=emp_sel.get("tienda", ""))
+                    with col2:
+                        perfil_edit = st.text_input("🎓 Perfil profesional", value=emp_sel.get("perfil_profesional", ""))
+                        dept_edit = st.text_input("🏛️ Departamento", value=emp_sel.get("departamento", ""))
+                        zona_edit = st.text_input("🌎 Zona", value=emp_sel.get("zona", ""))
+                    with col3:
+                        empresa_edit = st.text_input("🏢 Empresa", value=emp_sel.get("empresa", ""))
+                    guardar_cambios = st.form_submit_button("💾 Guardar cambios")
+                    eliminar_emp = st.form_submit_button("🗑️ Eliminar empleado")
+                    if guardar_cambios:
+                        cambios = []
+                        for campo, nuevo, viejo in [
+                            ("nombre", nombre_edit.strip().upper(), emp_sel.get("nombre", "")),
+                            ("perfil_profesional", perfil_edit.strip().upper(), emp_sel.get("perfil_profesional", "")),
+                            ("area", area_edit.strip().upper(), emp_sel.get("area", "")),
+                            ("departamento", dept_edit.strip().upper(), emp_sel.get("departamento", "")),
+                            ("tienda", tienda_edit.strip().upper(), emp_sel.get("tienda", "")),
+                            ("zona", zona_edit.strip().upper(), emp_sel.get("zona", "")),
+                            ("empresa", empresa_edit.strip().upper(), emp_sel.get("empresa", "")),
+                        ]:
+                            if nuevo != viejo:
+                                cambios.append(f"{campo}: '{viejo}' → '{nuevo}'")
+                                emp_sel[campo] = nuevo
+                        if cambios:
+                            if "historial_cambios" not in emp_sel or not isinstance(emp_sel["historial_cambios"], list):
+                                emp_sel["historial_cambios"] = []
+                            emp_sel["historial_cambios"].append({
+                                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "usuario": st.session_state.get("usuario_actual", "Sistema"),
+                                "cambios": cambios
+                            })
+                            guardar_empleados()
+                            registrar_movimiento("Editar empleado", f"{emp_sel.get('nombre','')} | {'; '.join(cambios)}")
+                            st.success("✅ Cambios guardados.")
+                            st.rerun()
+                        else:
+                            st.info("No hay cambios para guardar.")
+                    if eliminar_emp:
+                        if st.session_state.get("confirmar_eliminar_emp", None) == idx_sel:
+                            st.session_state.empleados.pop(idx_sel)
+                            guardar_empleados()
+                            registrar_movimiento("Eliminar empleado", f"{emp_sel.get('nombre','')}")
+                            st.success("✅ Empleado eliminado.")
+                            st.session_state["confirmar_eliminar_emp"] = None
+                            st.rerun()
+                        else:
+                            st.session_state["confirmar_eliminar_emp"] = idx_sel
+                            st.warning("Presiona de nuevo para confirmar la eliminación.")
+
+                # Mostrar historial de cambios
+                st.markdown("#### 🕓 Historial de cambios de este empleado")
+                historial = emp_sel.get("historial_cambios", [])
+                if historial:
+                    for evento in sorted(historial, key=lambda x: x.get('fecha', ''), reverse=True):
+                        st.write(f"- {evento.get('fecha')} / {evento.get('usuario')} / Cambios: {', '.join(evento.get('cambios', []))}")
+                else:
+                    st.info("No hay historial de cambios registrado para este empleado.")
 
         st.markdown("---")
         st.markdown("### ➕ Agregar empleado manualmente")
@@ -4021,7 +3871,7 @@ if vista_actual == "empleados":
                     if _nombre_nuevo in _nombres_ya:
                         st.warning(f"⚠️ Ya existe un empleado con el nombre '{_nombre_nuevo}'.")
                     else:
-                        st.session_state.empleados.append({
+                        nuevo_emp = {
                             "nombre": _nombre_nuevo,
                             "perfil_profesional": _emp_perfil.strip().upper(),
                             "area": _emp_area.strip().upper(),
@@ -4029,7 +3879,15 @@ if vista_actual == "empleados":
                             "tienda": _emp_tienda.strip().upper(),
                             "zona": _emp_zona.strip().upper(),
                             "empresa": _emp_empresa.strip().upper(),
-                        })
+                            "historial_cambios": [
+                                {
+                                    "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    "usuario": st.session_state.get("usuario_actual", "Sistema"),
+                                    "cambios": ["Creación de empleado"]
+                                }
+                            ]
+                        }
+                        st.session_state.empleados.append(nuevo_emp)
                         guardar_empleados()
                         st.success(f"✅ Empleado '{_nombre_nuevo}' agregado al catálogo.")
                         st.rerun()
@@ -4644,10 +4502,17 @@ if vista_actual == "configuracion":
         st.info("No hay movimientos registrados aún")
 
 # Footer
+# Footer
+import datetime
 st.markdown("---")
-st.markdown("""
+anio_actual = datetime.datetime.now().year
+st.markdown(f"""
 <div style='text-align: center; color: gray; font-size: 12px;'>
     <p>Sistema de Gestión de Planes Telefónicos Corporativos</p>
-    <p>Última actualización: 2024</p>
+    <p>Última actualización: {anio_actual}</p>
 </div>
 """, unsafe_allow_html=True)
+
+# --- Banner visual del celular al final de la app (última línea) ---
+if st.session_state.get("usuario_actual"):
+    render_hero_principal(st.session_state.usuario_actual, st.session_state.rol)
