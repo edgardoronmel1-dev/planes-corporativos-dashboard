@@ -3653,8 +3653,108 @@ if vista_actual == "empleados":
     st.caption("Importa la base del personal activo para usarla como catálogo al editar asignaciones de líneas.")
 
 
-    # --- Si quieres volver a mostrar el menú de importación, descomenta el siguiente bloque ---
-    # ... código de importación oculto ...
+    # --- Menú para importar empleados (CSV/Excel) ---
+    st.markdown("### 📥 Importar empleados (CSV/Excel)")
+    archivo_empleados = st.file_uploader(
+        "Selecciona un archivo de hoja de cálculo con empleados",
+        type=['csv', 'xlsx', 'xls'],
+        help="Permite cargar CSV o Excel con columnas: nombre, perfil_profesional, area, departamento, tienda, zona, empresa",
+        key="archivo_import_empleados",
+    )
+
+    hoja_empleados = None
+    df_preview_emp = None
+    if archivo_empleados is not None:
+        nombre_archivo_emp = archivo_empleados.name.lower()
+        if nombre_archivo_emp.endswith(('.xlsx', '.xls')):
+            try:
+                excel_file_emp = pd.ExcelFile(archivo_empleados)
+                hoja_empleados = st.selectbox(
+                    "Selecciona la hoja del Excel (empleados)",
+                    options=excel_file_emp.sheet_names,
+                    key="hoja_excel_empleados",
+                )
+                st.caption(f"Hojas detectadas: {', '.join(excel_file_emp.sheet_names)}")
+            except Exception as e:
+                st.error(f"❌ No pude leer las hojas del Excel: {e}")
+
+        try:
+            archivo_empleados.seek(0)
+            if nombre_archivo_emp.endswith('.csv'):
+                df_preview_emp = pd.read_csv(archivo_empleados).head(10)
+            elif nombre_archivo_emp.endswith(('.xlsx', '.xls')) and hoja_empleados:
+                df_preview_emp = pd.read_excel(archivo_empleados, sheet_name=hoja_empleados).head(10)
+
+            if df_preview_emp is not None:
+                df_preview_emp = preparar_dataframe_importacion(df_preview_emp)
+                st.markdown("#### 👀 Vista previa (primeras 10 filas)")
+                st.dataframe(df_preview_emp, width="stretch", hide_index=True)
+                st.caption(f"Columnas detectadas: {', '.join([str(c) for c in df_preview_emp.columns])}")
+        except Exception as e:
+            st.warning(f"No se pudo mostrar vista previa: {e}")
+
+    if archivo_empleados is not None:
+        if st.button("🔄 Cargar empleados", disabled=not permiso_importar):
+            try:
+                nombre_archivo_emp = archivo_empleados.name.lower()
+                archivo_empleados.seek(0)
+                if nombre_archivo_emp.endswith('.csv'):
+                    df_emp = pd.read_csv(archivo_empleados)
+                elif nombre_archivo_emp.endswith(('.xlsx', '.xls')):
+                    if not hoja_empleados:
+                        st.error("❌ Selecciona una hoja del Excel para continuar.")
+                        st.stop()
+                    archivo_empleados.seek(0)
+                    df_emp = pd.read_excel(archivo_empleados, sheet_name=hoja_empleados)
+                else:
+                    st.error("Formato no soportado para empleados.")
+                    st.stop()
+
+                df_emp = preparar_dataframe_importacion(df_emp)
+
+                existentes = {e.get('nombre', '').strip().upper() for e in st.session_state.get('empleados', [])}
+                nuevos = 0
+                duplicados = 0
+                invalidas = 0
+
+                for _, row in df_emp.iterrows():
+                    # Acepta columna 'nombre' o 'nombre_personal'
+                    nombre_raw = row.get('nombre') if 'nombre' in row.index else row.get('nombre_personal') if 'nombre_personal' in row.index else ''
+                    nombre = str(nombre_raw).strip()
+                    if not nombre:
+                        invalidas += 1
+                        continue
+                    nombre_up = nombre.upper()
+                    if nombre_up in existentes:
+                        duplicados += 1
+                        continue
+
+                    nuevo_emp = {
+                        'nombre': nombre_up,
+                        'perfil_profesional': str(row.get('perfil_profesional', '')).strip().upper(),
+                        'area': str(row.get('area', '')).strip().upper(),
+                        'departamento': str(row.get('departamento', '')).strip().upper(),
+                        'tienda': str(row.get('tienda', '')).strip().upper(),
+                        'zona': str(row.get('zona', '')).strip().upper(),
+                        'empresa': str(row.get('empresa', '')).strip().upper(),
+                        'historial_cambios': [
+                            {
+                                'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                'usuario': st.session_state.get('usuario_actual', 'Sistema'),
+                                'cambios': ['Creación de empleado (import)']
+                            }
+                        ]
+                    }
+                    st.session_state.empleados.append(nuevo_emp)
+                    existentes.add(nombre_up)
+                    nuevos += 1
+
+                guardar_empleados()
+                registrar_movimiento("Importar empleados", f"{nuevos} nuevos; {duplicados} duplicados; {invalidas} invalidas")
+                st.success(f"Importación completada: {nuevos} nuevos; {duplicados} duplicados; {invalidas} inválidas.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error importando empleados: {e}")
 
 
     # ---- Catálogo actual con edición profesional ----
@@ -4504,14 +4604,69 @@ if vista_actual == "configuracion":
 # Footer
 # Footer
 import datetime
+import os
+import hashlib
+
 st.markdown("---")
 anio_actual = datetime.datetime.now().year
+
+# Intentar resolver información del commit desplegado (varias fuentes posibles)
+commit_sha = None
+commit_source = None
+commit_date = None
+
+# 1) Variables de entorno (Streamlit/GitHub Actions/CI pueden exponerlas)
+for env_var in ("GIT_COMMIT", "GITHUB_SHA", "STREAMLIT_GIT_COMMIT", "COMMIT_SHA"):
+    val = os.getenv(env_var)
+    if val:
+        commit_sha = val.strip()
+        commit_source = f"env:{env_var}"
+        break
+
+# 2) Si hay un repo .git, intentar leer HEAD
+if not commit_sha:
+    try:
+        git_head = os.path.join(os.path.dirname(__file__), ".git", "HEAD")
+        if os.path.exists(git_head):
+            with open(git_head, "r", encoding="utf-8") as f:
+                head = f.read().strip()
+            if head.startswith("ref:"):
+                ref = head.split(" ", 1)[1].strip()
+                ref_path = os.path.join(os.path.dirname(__file__), ".git", ref)
+                if os.path.exists(ref_path):
+                    with open(ref_path, "r", encoding="utf-8") as f:
+                        commit_sha = f.read().strip()
+                        commit_source = f".git:{ref}"
+            else:
+                # detached HEAD
+                commit_sha = head
+                commit_source = ".git:HEAD"
+    except Exception:
+        commit_sha = commit_sha
+
+# 3) Fallback: hash del contenido del archivo para identificar versión desplegada
+if not commit_sha:
+    try:
+        with open(__file__, "rb") as f:
+            data = f.read()
+        commit_sha = hashlib.sha1(data).hexdigest()
+        commit_source = "file:sha1"
+        commit_date = datetime.datetime.fromtimestamp(os.path.getmtime(__file__)).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        commit_sha = None
+
+short_sha = commit_sha[:10] if commit_sha else "desconocido"
+
+# Mostrar footer con información de commit/version
 st.markdown(f"""
 <div style='text-align: center; color: gray; font-size: 12px;'>
     <p>Sistema de Gestión de Planes Telefónicos Corporativos</p>
-    <p>Última actualización: {anio_actual}</p>
-</div>
+    <p>Última actualización (año): {anio_actual}</p>
+    <p style='font-size:11px; margin-top:6px;'>Versión desplegada: <strong>{short_sha}</strong> <span style='color:#9aa0a6;'>({commit_source or 'desconocido'})</span></p>
 """, unsafe_allow_html=True)
+
+if commit_date:
+    st.markdown(f"<div style='text-align:center; color:gray; font-size:11px;'>Commit date: {commit_date}</div>", unsafe_allow_html=True)
 
 # --- Banner visual del celular al final de la app (última línea) ---
 if st.session_state.get("usuario_actual"):
