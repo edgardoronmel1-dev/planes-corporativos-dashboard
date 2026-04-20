@@ -1438,6 +1438,12 @@ def preparar_dataframe_importacion(df):
             "compania": "operador",
             "carrier": "operador",
             "nombre": "nombre_personal",
+            "nombres": "nombre_personal",
+            "nombre1": "nombre_personal",
+            "nombre2": "nombre_personal",
+            "nombre_completo": "nombre_personal",
+            "nombre_compl": "nombre_personal",
+            "nom": "nombre_personal",
             "asignado_a": "nombre_personal",
             "colaborador": "nombre_personal",
             "nombre_personal": "nombre_personal",
@@ -1482,6 +1488,18 @@ def preparar_dataframe_importacion(df):
 
     df = _normalizar_columnas(df)
 
+    # Detectar y eliminar columna índice tipo 'No.' al principio si existe
+    try:
+        primera_col = str(df.columns[0]).strip().lower()
+        if primera_col in ("no", "no.", "n.", "n", "#"):
+            vals = df.iloc[:, 0].astype(str).str.strip()
+            num_digitos = vals.str.fullmatch(r"\d+").sum()
+            if len(vals) > 0 and (num_digitos / len(vals) > 0.7):
+                df = df.iloc[:, 1:].copy()
+    except Exception:
+        pass
+
+    # Mantener compatibilidad: detectar fila de encabezados si 'numero' no existe
     if "numero" not in df.columns:
         max_filas_header = min(12, len(df))
         for i in range(max_filas_header):
@@ -1501,6 +1519,83 @@ def preparar_dataframe_importacion(df):
         mask_meta = primer_valor.str.startswith("#") | (primer_valor == "---")
         df = df[~mask_meta].reset_index(drop=True)
 
+    # Heurística para detectar columna de nombre si no se normalizó correctamente
+    if "nombre_personal" not in df.columns:
+        # Preferir columnas cuyo nombre normalizado contenga 'nombre'
+        cols_nombre = [c for c in df.columns if 'nombre' in str(c).lower()]
+        if cols_nombre:
+            df = df.rename(columns={cols_nombre[0]: 'nombre_personal'})
+        else:
+            # Heurística por contenido: buscar columna con valores que parezcan nombres (>=2 palabras, solo letras)
+            def score_nombre(serie):
+                s = serie.dropna().astype(str).str.strip()
+                if s.empty:
+                    return 0.0
+                sample = s.head(20)
+                def es_nombre(v):
+                    v = v.strip()
+                    if len(v) < 5:
+                        return False
+                    if any(ch.isdigit() for ch in v):
+                        return False
+                    parts = v.split()
+                    return len(parts) >= 2 and all(part.isalpha() or all(ch.isalpha() for ch in part) for part in parts)
+                matches = sample.apply(lambda v: es_nombre(v))
+                return float(matches.sum()) / len(sample)
+
+            mejor = None
+            mejor_score = 0.0
+            for c in df.columns:
+                try:
+                    sc = score_nombre(df[c])
+                except Exception:
+                    sc = 0.0
+                if sc > mejor_score:
+                    mejor_score = sc
+                    mejor = c
+            if mejor_score >= 0.6 and mejor is not None:
+                df = df.rename(columns={mejor: 'nombre_personal'})
+
+    # Normalizar nombres de columnas finales a minusculas y sin espacios incidentales
+    df.columns = [str(c).strip().lower() for c in df.columns]
+
+    return df
+
+
+def preparar_dataframe_empleados(df):
+    """Normaliza encabezados para archivos de empleados sin eliminar filas."""
+    if df is None or df.empty:
+        return df
+
+    def _normalizar_col(col):
+        txt = _normalizar_texto_columna(col)
+        aliases = {
+            'nombre': 'nombre_personal',
+            'nombres': 'nombre_personal',
+            'nombre1': 'nombre_personal',
+            'nombre2': 'nombre_personal',
+            'nombre_completo': 'nombre_personal',
+            'nombre_compl': 'nombre_personal',
+            'nombre_compl.': 'nombre_personal',
+            'nom': 'nombre_personal',
+            'perfil': 'perfil_profesional',
+            'cargo': 'perfil_profesional',
+            'perfil_profesional': 'perfil_profesional',
+            'area': 'area',
+            'departamento': 'departamento',
+            'tienda': 'tienda',
+            'zona': 'zona',
+            'empresa': 'empresa',
+            'operador': 'operador',
+        }
+        return aliases.get(txt, txt)
+
+    renames = {}
+    for col in df.columns:
+        renames[col] = _normalizar_col(col)
+
+    df = df.rename(columns=renames)
+    df.columns = [str(c).strip().lower() for c in df.columns]
     return df
 
 
@@ -3698,19 +3793,61 @@ if vista_actual == "empleados":
             try:
                 nombre_archivo_emp = archivo_empleados.name.lower()
                 archivo_empleados.seek(0)
-                if nombre_archivo_emp.endswith('.csv'):
-                    df_emp = pd.read_csv(archivo_empleados)
-                elif nombre_archivo_emp.endswith(('.xlsx', '.xls')):
-                    if not hoja_empleados:
-                        st.error("❌ Selecciona una hoja del Excel para continuar.")
+                try:
+                    if nombre_archivo_emp.endswith('.csv'):
+                        df_emp = pd.read_csv(archivo_empleados, dtype=str)
+                        registrar_debug_importacion("read_empleados", f"CSV rows={len(df_emp.index)} cols={list(df_emp.columns)}")
+                    elif nombre_archivo_emp.endswith(('.xlsx', '.xls')):
+                        if not hoja_empleados:
+                            st.error("❌ Selecciona una hoja del Excel para continuar.")
+                            st.stop()
+                        archivo_empleados.seek(0)
+                        try:
+                            df_emp = pd.read_excel(archivo_empleados, sheet_name=hoja_empleados, engine='openpyxl', dtype=str)
+                        except Exception:
+                            # fallback a lectura por defecto si openpyxl falla
+                            df_emp = pd.read_excel(archivo_empleados, sheet_name=hoja_empleados, dtype=str)
+                        registrar_debug_importacion("read_empleados", f"Excel rows={len(df_emp.index)} cols={list(df_emp.columns)} sheet={hoja_empleados}")
+                    else:
+                        st.error("Formato no soportado para empleados.")
                         st.stop()
-                    archivo_empleados.seek(0)
-                    df_emp = pd.read_excel(archivo_empleados, sheet_name=hoja_empleados)
-                else:
-                    st.error("Formato no soportado para empleados.")
+                except Exception as e:
+                    registrar_debug_importacion("read_error", f"file={archivo_empleados.name}; error={e}")
+                    st.error(f"❌ Error leyendo el archivo: {e}")
                     st.stop()
 
-                df_emp = preparar_dataframe_importacion(df_emp)
+                # --- DEBUG: mostrar encabezados y primeras filas antes y después de normalizar ---
+                try:
+                    st.markdown("**DEBUG: Encabezados originales detectados**")
+                    st.write(list(df_emp.columns))
+                    st.markdown("**DEBUG: Primeras filas (raw)**")
+                    st.dataframe(df_emp.head(5))
+                except Exception:
+                    pass
+
+                # Aplicar normalización (misma función que en local)
+                df_emp_preparado = None
+                try:
+                    # Para empleados usamos un flujo de normalización más simple (no eliminar filas)
+                    df_emp_preparado = preparar_dataframe_empleados(df_emp.copy())
+                except Exception as e:
+                    st.error(f"❌ Error al preparar/normalizar dataframe: {e}")
+
+                if df_emp_preparado is not None:
+                    try:
+                        st.markdown("**DEBUG: Encabezados después de preparar_dataframe_importacion()**")
+                        st.write(list(df_emp_preparado.columns))
+                        st.markdown("**DEBUG: Primeras filas (preparado)**")
+                        st.dataframe(df_emp_preparado.head(5))
+                    except Exception:
+                        pass
+
+                # Reasignar df_emp al dataframe preparado para el flujo existente
+                if df_emp_preparado is not None:
+                    df_emp = df_emp_preparado
+                else:
+                    # Si la preparación falló, continuar con el original para que el usuario vea lo que pasó
+                    df_emp = df_emp
 
                 existentes = {e.get('nombre', '').strip().upper() for e in st.session_state.get('empleados', [])}
                 nuevos = 0
