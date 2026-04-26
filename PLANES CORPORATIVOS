@@ -1,0 +1,111 @@
+import streamlit as st
+import pandas as pd
+import os
+
+# 1. Configuración visual de la aplicación
+st.set_page_config(page_title="Gestión de Telefonía", layout="wide")
+
+st.title("📱 Sistema de Gestión de Planes Corporativos")
+st.markdown("---")
+
+# 2. Función para cargar los datos
+@st.cache_data
+def load_data():
+    # Usa el CSV principal; si no existe, usa el archivo de ejemplo del proyecto.
+    csv_path = "PLANES CORPORATIVOS.csv"
+    if not os.path.exists(csv_path):
+        csv_path = "ejemplo_datos.csv"
+
+    df = pd.read_csv(csv_path)
+
+    # Normaliza formatos de columnas para soportar distintos CSV sin romper la app.
+    normalized = {col.strip().lower(): col for col in df.columns}
+
+    def get_col(*candidates):
+        for candidate in candidates:
+            key = candidate.strip().lower()
+            if key in normalized:
+                return normalized[key]
+        return None
+
+    def to_float_series(series):
+        clean = series.astype(str).str.replace(r"[^\d.\-]", "", regex=True)
+        return pd.to_numeric(clean, errors="coerce").fillna(0.0)
+
+    area_col = get_col("AREA", "area")
+    if area_col and area_col != "AREA":
+        df = df.rename(columns={area_col: "AREA"})
+    elif not area_col:
+        df["AREA"] = "Sin Área"
+
+    lempiras_col = get_col("Lempiras", "lempiras")
+    dolares_col = get_col("Plan Dolares", "plan dolares", "valor_usd", "usd", "dolares")
+
+    if lempiras_col:
+        df["Lempiras"] = to_float_series(df[lempiras_col])
+    elif dolares_col:
+        df["Plan Dolares"] = to_float_series(df[dolares_col])
+        tasa_referencia = 24.7
+        df["Lempiras"] = df["Plan Dolares"] * tasa_referencia
+    else:
+        df["Lempiras"] = 0.0
+
+    if "Plan Dolares" not in df.columns:
+        if dolares_col:
+            df["Plan Dolares"] = to_float_series(df[dolares_col])
+        else:
+            df["Plan Dolares"] = 0.0
+    else:
+        df["Plan Dolares"] = to_float_series(df["Plan Dolares"])
+
+    asignacion_col = get_col("ASIGNACION", "asignacion", "nombre_personal", "nombre")
+    if asignacion_col and asignacion_col != "ASIGNACION":
+        df = df.rename(columns={asignacion_col: "ASIGNACION"})
+    elif not asignacion_col:
+        df["ASIGNACION"] = pd.NA
+    
+    return df
+
+try:
+    df = load_data()
+
+    # 3. Sidebar (Panel Lateral) para Filtros
+    st.sidebar.header("🔍 Filtros de Búsqueda")
+    
+    # Filtro por Área
+    areas = df["AREA"].unique().tolist()
+    seleccion_area = st.sidebar.multiselect("Filtrar por Área:", options=areas)
+
+    # Aplicar filtros
+    if seleccion_area:
+        df_filtrado = df[df["AREA"].isin(seleccion_area)]
+    else:
+        df_filtrado = df
+
+    # 4. Indicadores Clave (Métricas)
+    col1, col2, col3 = st.columns(3)
+    
+    total_lempiras = df_filtrado['Lempiras'].sum()
+    lineas_libres = df_filtrado['ASIGNACION'].isna().sum()
+
+    col1.metric("Total de Líneas", len(df_filtrado))
+    col2.metric("Gasto Total (Lempiras)", f"L {total_lempiras:,.2f}")
+    col3.metric("Líneas sin Asignar", lineas_libres)
+
+    st.markdown("---")
+
+    # 5. Tabla de Datos Interactiva
+    st.subheader("📋 Listado Detallado")
+    st.dataframe(df_filtrado, width="stretch")
+
+    # 6. Gráfico de Gastos
+    st.markdown("---")
+    st.subheader("📊 Gasto por Área (Lempiras)")
+    gasto_por_area = df_filtrado.groupby("AREA")["Lempiras"].sum().sort_values(ascending=False)
+    st.bar_chart(gasto_por_area)
+
+except FileNotFoundError:
+    st.error("❌ No encontré el archivo 'PLANES CORPORATIVOS.csv'. Asegúrate de que esté en la misma carpeta que tu código.")
+except Exception as e:
+    st.error(f"⚠️ Ocurrió un error: {e}")
+

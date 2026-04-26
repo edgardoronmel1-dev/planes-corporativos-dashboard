@@ -15,7 +15,11 @@ def generar_responsiva_completa_pdf(
     valor_equipo,
     ciudad,
     fecha,
-    logo_path
+    logo_path,
+    numero_identidad=None,
+    tienda=None,
+    zona=None,
+    valor_plan_usd=None
 ):
     """Genera un PDF de responsiva de equipo de trabajo (3 páginas) con logo y textos fijos."""
     pdf = FPDF()
@@ -29,7 +33,9 @@ def generar_responsiva_completa_pdf(
     pdf.cell(0, 8, "ASIGNACIÓN DE EQUIPO DE TRABAJO", ln=True, align='C')
     pdf.ln(6)
     pdf.set_font("Arial", size=11)
-    pdf.multi_cell(0, 8, f"Yo ____________________________, con tarjeta de identidad número ____________________________, del departamento de {departamento},\nestoy recibiendo por parte de MOTOS (OPERACIONES), el siguiente equipo de trabajo con las siguientes características:")
+    # Encabezado con datos personales
+    identidad_str = numero_identidad if numero_identidad else "____________________________"
+    pdf.multi_cell(0, 8, f"Yo {empleado}, con tarjeta de identidad número {identidad_str}, del departamento de {departamento},\nestoy recibiendo por parte de MOTOS (OPERACIONES), el siguiente equipo de trabajo con las siguientes características:")
     pdf.ln(2)
     pdf.set_font("Arial", "B", 11)
     pdf.cell(0, 7, f"Dispositivo: {dispositivo}", ln=True)
@@ -39,8 +45,15 @@ def generar_responsiva_completa_pdf(
     pdf.set_font("Arial", "B", 11)
     pdf.cell(0, 7, f"Modelo: {modelo}    Plan: {plan}", ln=True)
     pdf.cell(0, 7, f"Serie: {serie}    Área: {area} / Departamento: {departamento}", ln=True)
+    # Datos adicionales
+    if tienda:
+        pdf.cell(0, 7, f"Tienda: {tienda}", ln=True)
+    if zona:
+        pdf.cell(0, 7, f"Zona: {zona}", ln=True)
     pdf.cell(0, 7, f"Estado: {estado}    Cargador: {cargador}", ln=True)
     pdf.cell(0, 7, f"Funcionalidad: {funcionalidad}    Número corporativo: {numero_corporativo}", ln=True)
+    if valor_plan_usd is not None:
+        pdf.cell(0, 7, f"Valor del Plan (USD): ${valor_plan_usd:,.2f}", ln=True)
     pdf.ln(2)
     pdf.set_font("Arial", size=11)
     pdf.multi_cell(0, 7, "El cual recibo en perfectas condiciones, y el cual queda bajo mi responsabilidad, comprometiéndome al uso adecuado del mismo, y a entregarlo al retirarme de la empresa. De comprobarse que por negligencia o mal manejo lo dañara, autorizo a la empresa la deducción respectiva del monto correspondiente.")
@@ -218,6 +231,107 @@ from datetime import datetime, timedelta
 # Definir ARCHIVO_TASA_CACHE si no existe
 ARCHIVO_TASA_CACHE = "tasa_usd_hnl_cache.json"
 
+# --- Configuracion de persistencia Postgres (Supabase) ---
+DB_URL = None
+try:
+    DB_URL = st.secrets.get("DATABASE_URL")
+except Exception:
+    DB_URL = os.environ.get("DATABASE_URL")
+
+engine = None
+# intentamos crear engine si sqlalchemy está disponible
+if DB_URL:
+    try:
+        from sqlalchemy import create_engine
+        connect_args = {"sslmode": "require"} if "supabase.co" in DB_URL else {}
+        engine = create_engine(DB_URL, connect_args=connect_args)
+    except Exception:
+        engine = None
+
+
+def cargar_empleados_db():
+    if not DB_URL:
+        return None
+    try:
+        if engine is not None:
+            df = pd.read_sql("SELECT nombre, perfil_profesional, area, departamento, tienda, zona, empresa, historial_cambios FROM empleados", engine)
+        else:
+            import psycopg2
+            conn = psycopg2.connect(DB_URL, sslmode='require')
+            df = pd.read_sql("SELECT nombre, perfil_profesional, area, departamento, tienda, zona, empresa, historial_cambios FROM empleados", conn)
+            conn.close()
+        empleados = []
+        for _, r in df.iterrows():
+            emp = {
+                "nombre": (r.get("nombre") or "").strip(),
+                "perfil_profesional": (r.get("perfil_profesional") or "").strip(),
+                "area": (r.get("area") or "").strip(),
+                "departamento": (r.get("departamento") or "").strip(),
+                "tienda": (r.get("tienda") or "").strip(),
+                "zona": (r.get("zona") or "").strip(),
+                "empresa": (r.get("empresa") or "").strip(),
+                "historial_cambios": r.get("historial_cambios") if r.get("historial_cambios") is not None else []
+            }
+            # Si existe el campo de identidad, agregarlo
+            if 'numero_identidad' in r:
+                emp['numero_identidad'] = (r.get('numero_identidad') or '').strip()
+            elif 'identidad' in r:
+                emp['numero_identidad'] = (r.get('identidad') or '').strip()
+            empleados.append(emp)
+        return empleados
+    except Exception as e:
+        try:
+            registrar_debug_importacion("db_load_error", str(e))
+        except Exception:
+            pass
+        return None
+
+
+def guardar_empleados_db():
+    if not DB_URL:
+        return False
+    try:
+        import psycopg2
+        conn = psycopg2.connect(DB_URL, sslmode='require')
+        cur = conn.cursor()
+        for emp in st.session_state.get('empleados', []):
+            nombre = (emp.get('nombre','') or '').strip()
+            if not nombre:
+                continue
+            perfil = emp.get('perfil_profesional','') or ''
+            area = emp.get('area','') or ''
+            departamento = emp.get('departamento','') or ''
+            tienda = emp.get('tienda','') or ''
+            zona = emp.get('zona','') or ''
+            empresa = emp.get('empresa','') or ''
+            historial = emp.get('historial_cambios', []) or []
+            cur.execute(
+                """
+                INSERT INTO empleados (nombre, perfil_profesional, area, departamento, tienda, zona, empresa, historial_cambios)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (nombre) DO UPDATE SET
+                  perfil_profesional = EXCLUDED.perfil_profesional,
+                  area = EXCLUDED.area,
+                  departamento = EXCLUDED.departamento,
+                  tienda = EXCLUDED.tienda,
+                  zona = EXCLUDED.zona,
+                  empresa = EXCLUDED.empresa,
+                  historial_cambios = EXCLUDED.historial_cambios,
+                  actualizado = now();
+                """,
+                (nombre, perfil, area, departamento, tienda, zona, empresa, json.dumps(historial))
+            )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception as e:
+        try:
+            registrar_debug_importacion("db_save_error", str(e))
+        except Exception:
+            pass
+        return False
+
 # Definir _guardar_tasa_cache si no existe
 def _guardar_tasa_cache(tasa, fuente):
     payload = {
@@ -267,6 +381,7 @@ def _obtener_tasa_desde_fuentes():
         'numero': numero_limpio,
         'operador': (str(operador).strip() or 'TIGO').upper(),
         'nombre_personal': nombre_personal,
+        'numero_identidad': numero_identidad,
         'area': area,
         'departamento': departamento,
         'perfil_profesional': perfil_profesional,
@@ -465,6 +580,9 @@ def _construir_dataframe_planes_cache(planes_serializados):
     for col in ['tienda', 'zona', 'empresa']:
         if col not in df.columns:
             df[col] = ''
+    # Agrega columna de identidad si no existe
+    if 'numero_identidad' not in df.columns:
+        df['numero_identidad'] = ''
     return df
 
 
@@ -617,7 +735,8 @@ def _preferencias_usuario_default():
         "fondo_visual": "Impacto",
         "estilo_hero": "iPhone",
         "notificaciones": True,
-        "columnas_visibles": ["numero", "nombre_personal", "area", "departamento", "valor_usd"],
+        # Agrega la columna de identidad junto a nombre_personal
+        "columnas_visibles": ["numero", "nombre_personal", "numero_identidad", "area", "departamento", "valor_usd"],
     }
 
 
@@ -1312,7 +1431,17 @@ if 'confirmar_limpiar_datos' not in st.session_state:
     st.session_state.confirmar_limpiar_datos = False
 
 if 'empleados' not in st.session_state:
-    st.session_state.empleados = cargar_empleados()
+    # Priorizar carga desde DB si está configurada
+    empleados_from_db = None
+    try:
+        if DB_URL:
+            empleados_from_db = cargar_empleados_db()
+    except Exception:
+        empleados_from_db = None
+    if empleados_from_db:
+        st.session_state.empleados = empleados_from_db
+    else:
+        st.session_state.empleados = cargar_empleados()
 
 if 'credenciales_recordadas' not in st.session_state:
     st.session_state.credenciales_recordadas = cargar_recordarme()
@@ -1587,6 +1716,8 @@ def preparar_dataframe_empleados(df):
             'zona': 'zona',
             'empresa': 'empresa',
             'operador': 'operador',
+            'identidad': 'numero_identidad',
+            'numero_identidad': 'numero_identidad',
         }
         return aliases.get(txt, txt)
 
@@ -1596,6 +1727,9 @@ def preparar_dataframe_empleados(df):
 
     df = df.rename(columns=renames)
     df.columns = [str(c).strip().lower() for c in df.columns]
+    # Asegurar columna numero_identidad
+    if 'numero_identidad' not in df.columns:
+        df['numero_identidad'] = ''
     return df
 
 
@@ -1760,6 +1894,7 @@ def construir_plan_desde_fila(row, tasa_default):
         "numero": numero,
         "operador": normalizar_operador(row.get("operador", "TIGO")),
         "nombre_personal": nombre,
+        "numero_identidad": str(row.get("numero_identidad", row.get("identidad", ""))).strip(),
         "area": str(row.get("area", "Sin Área")).strip() or "Sin Área",
         "departamento": str(row.get("departamento", "Sin Departamento")).strip() or "Sin Departamento",
         "perfil_profesional": str(row.get("perfil_profesional", "")).strip(),
@@ -1879,6 +2014,7 @@ def construir_tabla_planes_profesional(df_tabla):
         'operador',
         'estado_linea',
         'nombre_personal',
+        'numero_identidad',  # <-- Ahora justo después de Asignado a
         'perfil_profesional',
         'area',
         'departamento',
@@ -2837,8 +2973,24 @@ if vista_actual == "agregar":
         numero = st.text_input("📞 Número Corporativo", placeholder="Ej: +504-2234-5678")
         st.caption("Formato sugerido: +504-2234-5678")
         st.caption("Se permiten nombres repetidos; el número corporativo debe ser único.")
-        nombre_personal = st.text_input("👤 Nombre del Personal", placeholder="Ej: Juan Pérez")
-        area = st.text_input("🏢 Área", placeholder="Ej: Ventas")
+
+        empleados_catalogo = st.session_state.get('empleados', [])
+        opciones_empleados = ["(Ingresar manualmente)"] + [f"{e.get('nombre','')} - {e.get('area','')}" for e in empleados_catalogo]
+        idx_empleado = st.selectbox("👥 Seleccionar del Catálogo de Empleados", opciones_empleados, index=0)
+
+        if idx_empleado != "(Ingresar manualmente)":
+            emp_idx = opciones_empleados.index(idx_empleado) - 1
+            empleado_sel = empleados_catalogo[emp_idx] if emp_idx >= 0 else {}
+            nombre_personal = empleado_sel.get('nombre', '')
+            area = empleado_sel.get('area', '')
+            departamento = empleado_sel.get('departamento', '')
+            numero_identidad = st.text_input("🆔 Número de Identidad", value=empleado_sel.get('numero_identidad', empleado_sel.get('identidad', '')), placeholder="Ej: 0801-1990-12345")
+        else:
+            nombre_personal = st.text_input("👤 Nombre del Personal", placeholder="Ej: Juan Pérez")
+            numero_identidad = st.text_input("🆔 Número de Identidad", placeholder="Ej: 0801-1990-12345")
+            area = st.text_input("🏢 Área", placeholder="Ej: Ventas")
+            departamento = None  # Se llenará en col2
+
         operador = st.text_input("📶 Operador", value="TIGO")
         perfil_profesional = st.text_input("🎓 Perfil Profesional", placeholder="Ej: Ingeniero de Soporte")
         dispositivo_asignado = st.text_input("📱 Dispositivo Asignado", placeholder="Ej: Samsung Galaxy S23")
@@ -2847,7 +2999,10 @@ if vista_actual == "agregar":
         serie_dispositivo = st.text_input("🔢 Serie del Dispositivo", placeholder="Ej: SN-ABC123456")
 
     with col2:
-        departamento = st.text_input("🏛️ Departamento", placeholder="Ej: Comercial")
+        if idx_empleado != "(Ingresar manualmente)" and 'departamento' in empleado_sel:
+            departamento = st.text_input("🏛️ Departamento", value=empleado_sel.get('departamento',''), placeholder="Ej: Comercial")
+        else:
+            departamento = st.text_input("🏛️ Departamento", placeholder="Ej: Comercial")
         valor_usd = st.number_input("💵 Valor del Plan (USD)", min_value=0.0, step=0.01)
         imei1 = st.text_input("📳 IMEI 1", placeholder="Ej: 123456789012345")
         imei2 = st.text_input("📳 IMEI 2", placeholder="Ej: 543210987654321")
@@ -2885,6 +3040,7 @@ if vista_actual == "agregar":
                     'numero': numero_limpio,
                     'operador': (str(operador).strip() or 'TIGO').upper(),
                     'nombre_personal': nombre_personal,
+                    'numero_identidad': numero_identidad,
                     'area': area,
                     'departamento': departamento,
                     'perfil_profesional': perfil_profesional,
@@ -3016,6 +3172,7 @@ if vista_actual == "gestionar":
         _column_config_planes = {
             "item": st.column_config.NumberColumn("Item", format="%d", width="small"),
             "numero": st.column_config.TextColumn("Número", width="medium"),
+            "numero_identidad": st.column_config.TextColumn("Número de Identidad", width="medium"),
             "operador": st.column_config.TextColumn("Operador", width="small"),
             "estado_linea": st.column_config.TextColumn("Estado", width="small"),
             "nombre_personal": st.column_config.TextColumn("Asignado a", width="medium"),
@@ -3532,8 +3689,20 @@ if vista_actual == "gestionar":
             )
             if empleado_seleccionado != "— Sin cambio —":
                 nombre_edit = empleado_seleccionado
+                # Si el empleado está en el catálogo, usar su número de identidad
+                emp_obj = next((e for e in empleados if e.get('nombre', '') == empleado_seleccionado), None)
+                numero_identidad_edit = st.text_input(
+                    "🆔 Número de Identidad",
+                    value=emp_obj.get('numero_identidad', plan_sel.get('numero_identidad', '')) if emp_obj else plan_sel.get('numero_identidad', ''),
+                    placeholder="Ej: 0801-1990-12345"
+                )
             else:
                 nombre_edit = st.text_input("👤 Nombre del Personal", value=_nombre_default)
+                numero_identidad_edit = st.text_input(
+                    "🆔 Número de Identidad",
+                    value=plan_sel.get('numero_identidad', ''),
+                    placeholder="Ej: 0801-1990-12345"
+                )
             area_edit = st.text_input("🏢 Área", value=_area_default)
             departamento_edit = st.text_input("🏛️ Departamento", value=_dept_default)
             perfil_edit = st.text_input("🎓 Perfil Profesional", value=_perfil_default)
@@ -3555,7 +3724,7 @@ if vista_actual == "gestionar":
         # Fuera del formulario: botón de descarga de responsiva PDF
         pdf_bytes = generar_responsiva_completa_pdf(
             empleado=nombre_edit,
-            departamento=area_edit,
+            departamento=departamento_edit,
             dispositivo=dispositivo_asignado_edit,
             marca=marca_dispositivo_edit,
             imei=f"{imei1_edit} / {imei2_edit}",
@@ -3567,11 +3736,17 @@ if vista_actual == "gestionar":
             cargador="Original",
             funcionalidad="100%",
             numero_corporativo=numero_edit,
-            valor_equipo=valor_usd_edit,
+            valor_equipo=plan_sel.get('precio_dispositivo', valor_usd_edit),
             ciudad="COMAYAGUA",
             fecha=str(datetime.now().year),
-            logo_path="km_motos_banner.png"
+            logo_path="km_motos_banner.png",
+            numero_identidad=numero_identidad_edit,
+            tienda=plan_sel.get('tienda', ''),
+            zona=plan_sel.get('zona', ''),
+            valor_plan_usd=plan_sel.get('valor_usd', valor_usd_edit)
         )
+        # Mostrar datos adicionales en la página 1 del PDF (número de identidad, tienda, zona, valor del plan en USD)
+        # Si quieres que estos datos aparezcan en el PDF, debes modificar la función generar_responsiva_completa_pdf para agregarlos en el layout.
         st.download_button(
             label="Generar responsiva PDF",
             data=pdf_bytes,
@@ -3898,7 +4073,7 @@ if vista_actual == "empleados":
     st.markdown(f"### 📋 Catálogo actual — {len(st.session_state.empleados)} empleados")
     if st.session_state.empleados:
         _df_cat = pd.DataFrame(st.session_state.empleados)
-        for _c in ("nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"):
+        for _c in ("nombre", "numero_identidad", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"):
             if _c not in _df_cat.columns:
                 _df_cat[_c] = ""
         _buscar_cat = st.text_input("🔍 Buscar en catálogo:", placeholder="Nombre, área, perfil...", key="buscar_emp_catalogo")
@@ -3912,7 +4087,7 @@ if vista_actual == "empleados":
             )
             _df_cat = _df_cat[_mask]
 
-        columnas_vista = [c for c in ["nombre", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_cat.columns]
+        columnas_vista = [c for c in ["nombre", "numero_identidad", "perfil_profesional", "area", "departamento", "tienda", "zona", "empresa"] if c in _df_cat.columns]
         _df_cat_vista = _df_cat[columnas_vista].copy()
         _df_cat_vista.insert(0, "No.", range(1, len(_df_cat_vista) + 1))
 
@@ -3925,6 +4100,7 @@ if vista_actual == "empleados":
             column_config={
                 "No.": st.column_config.NumberColumn("No.", format="%d", width="small"),
                 "nombre": st.column_config.TextColumn("Nombre", width="large"),
+                "numero_identidad": st.column_config.TextColumn("Número de Identidad", width="large"),
                 "perfil_profesional": st.column_config.TextColumn("Perfil", width="large"),
                 "area": st.column_config.TextColumn("Área", width="medium"),
                 "departamento": st.column_config.TextColumn("Departamento", width="medium"),
@@ -3934,6 +4110,76 @@ if vista_actual == "empleados":
             },
             key="emp_table_editor"
         )
+
+        # Botones de exportación: filtrados y completos (CSV y Excel)
+        col_export1, col_export2 = st.columns([1,1])
+        with col_export1:
+            try:
+                csv_filtered = _df_cat_vista.to_csv(index=False).encode('utf-8-sig')
+            except Exception:
+                csv_filtered = _df_cat_vista.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar filtrados (CSV)",
+                data=csv_filtered,
+                file_name="empleados_filtrados.csv",
+                mime="text/csv",
+                disabled=_df_cat_vista.empty,
+            )
+            # Excel filtered
+            try:
+                from io import BytesIO
+                bio = BytesIO()
+                with pd.ExcelWriter(bio, engine='openpyxl') as writer:
+                    _df_cat_vista.to_excel(writer, index=False, sheet_name='Filtrados')
+                xlsx_filtered = bio.getvalue()
+            except Exception:
+                xlsx_filtered = None
+            st.download_button(
+                label="📥 Descargar filtrados (Excel)",
+                data=xlsx_filtered,
+                file_name="empleados_filtrados.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                disabled=(_df_cat_vista.empty or xlsx_filtered is None),
+            )
+        with col_export2:
+            try:
+                df_full = pd.DataFrame(st.session_state.empleados)
+            except Exception:
+                df_full = pd.DataFrame()
+            if not df_full.empty:
+                for _c in columnas_vista:
+                    if _c not in df_full.columns:
+                        df_full[_c] = ""
+                df_full_export = df_full[columnas_vista].copy()
+            else:
+                df_full_export = pd.DataFrame(columns=columnas_vista)
+            try:
+                csv_full = df_full_export.to_csv(index=False).encode('utf-8-sig')
+            except Exception:
+                csv_full = df_full_export.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar completos (CSV)",
+                data=csv_full,
+                file_name="empleados_completos.csv",
+                mime="text/csv",
+                disabled=(len(st.session_state.empleados) == 0),
+            )
+            # Excel full
+            try:
+                from io import BytesIO
+                bio2 = BytesIO()
+                with pd.ExcelWriter(bio2, engine='openpyxl') as writer:
+                    df_full_export.to_excel(writer, index=False, sheet_name='Completos')
+                xlsx_full = bio2.getvalue()
+            except Exception:
+                xlsx_full = None
+            st.download_button(
+                label="📥 Descargar completos (Excel)",
+                data=xlsx_full,
+                file_name="empleados_completos.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                disabled=(len(st.session_state.empleados) == 0 or xlsx_full is None),
+            )
 
         # Selección profesional de empleado debajo de la tabla
         nombres_vista = _df_cat_vista["nombre"].tolist()
@@ -3954,6 +4200,7 @@ if vista_actual == "empleados":
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         nombre_edit = st.text_input("👤 Nombre completo", value=emp_sel.get("nombre", ""))
+                        numero_identidad_edit = st.text_input("🆔 Número de Identidad", value=emp_sel.get("numero_identidad", ""))
                         area_edit = st.text_input("🏢 Área", value=emp_sel.get("area", ""))
                         tienda_edit = st.text_input("🏬 Tienda", value=emp_sel.get("tienda", ""))
                     with col2:
@@ -3968,6 +4215,7 @@ if vista_actual == "empleados":
                         cambios = []
                         for campo, nuevo, viejo in [
                             ("nombre", nombre_edit.strip().upper(), emp_sel.get("nombre", "")),
+                            ("numero_identidad", numero_identidad_edit.strip(), emp_sel.get("numero_identidad", "")),
                             ("perfil_profesional", perfil_edit.strip().upper(), emp_sel.get("perfil_profesional", "")),
                             ("area", area_edit.strip().upper(), emp_sel.get("area", "")),
                             ("departamento", dept_edit.strip().upper(), emp_sel.get("departamento", "")),
@@ -4026,6 +4274,7 @@ if vista_actual == "empleados":
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         nombre_edit = st.text_input("👤 Nombre completo", value=emp_sel.get("nombre", ""))
+                        numero_identidad_edit = st.text_input("🆔 Número de Identidad", value=emp_sel.get("numero_identidad", ""))
                         area_edit = st.text_input("🏢 Área", value=emp_sel.get("area", ""))
                         tienda_edit = st.text_input("🏬 Tienda", value=emp_sel.get("tienda", ""))
                     with col2:
@@ -4040,6 +4289,7 @@ if vista_actual == "empleados":
                         cambios = []
                         for campo, nuevo, viejo in [
                             ("nombre", nombre_edit.strip().upper(), emp_sel.get("nombre", "")),
+                            ("numero_identidad", numero_identidad_edit.strip(), emp_sel.get("numero_identidad", "")),
                             ("perfil_profesional", perfil_edit.strip().upper(), emp_sel.get("perfil_profesional", "")),
                             ("area", area_edit.strip().upper(), emp_sel.get("area", "")),
                             ("departamento", dept_edit.strip().upper(), emp_sel.get("departamento", "")),
@@ -4110,6 +4360,7 @@ if vista_actual == "empleados":
                     else:
                         nuevo_emp = {
                             "nombre": _nombre_nuevo,
+                            "numero_identidad": st.text_input("🆔 Número de Identidad", key="add_numero_identidad").strip(),
                             "perfil_profesional": _emp_perfil.strip().upper(),
                             "area": _emp_area.strip().upper(),
                             "departamento": _emp_dept.strip().upper(),
